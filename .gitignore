@@ -5,3 +5,9 @@ test-results/
 playwright-report/
 *.log
 .env
+# Private source videos and all generated motion media/data stay on this PC.
+/*.[mM][oO][vV]
+/*.[mM][pP]4
+/*.[mM]4[vV]
+/*.[wW][eE][bB][mM]
+.cache/
