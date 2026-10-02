@@ -1,0 +1,321 @@
+{
+  "schemaVersion": 1,
+  "id": "95d4a888-be05-4dfe-83db-bd951cceb821",
+  "name": "Demo Bedroom",
+  "createdAt": "2026-10-02T09:57:22.602Z",
+  "updatedAt": "2026-10-02T09:57:22.602Z",
+  "room": {
+    "name": "Multi-use bedroom",
+    "width": 5,
+    "length": 6,
+    "height": 2.7
+  },
+  "calibration": {
+    "method": "manual",
+    "position": {
+      "x": 4.6,
+      "y": 1.65,
+      "z": 6.5
+    },
+    "quaternion": {
+      "x": -0.032851403638278376,
+      "y": 0.3029112475307199,
+      "z": 0.01044845763406105,
+      "w": 0.9523950814296801
+    },
+    "origin": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "correction": {
+      "x": 0,
+      "y": 0,
+      "z": 0
+    },
+    "scale": 1,
+    "fov": 50,
+    "markerSize": 0.2,
+    "knownDistance": 1
+  },
+  "layouts": [
+    {
+      "id": "a63ecf75-291e-49d3-8686-7533f8bd96ba",
+      "name": "Current Bedroom",
+      "furniture": [
+        {
+          "instanceId": "c8c23cba-fae1-4fd5-8723-9d2966c53911",
+          "furnitureId": "bed",
+          "position": {
+            "x": -1.1,
+            "y": 0,
+            "z": -0.8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "57ea5507-e2f9-4cd7-8cd7-487608b41105",
+          "furnitureId": "desk",
+          "position": {
+            "x": 1,
+            "y": 0,
+            "z": -0.9
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "4ad810dc-21ff-450d-90f0-c69bce0f544e",
+          "furnitureId": "chair",
+          "position": {
+            "x": 1,
+            "y": 0,
+            "z": 0.1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "id": "88888125-959b-4673-b501-8e4206a1f1e7",
+      "name": "Study",
+      "furniture": [
+        {
+          "instanceId": "c8c23cba-fae1-4fd5-8723-9d2966c53911",
+          "furnitureId": "bed",
+          "position": {
+            "x": -1.1,
+            "y": 0,
+            "z": 1.2
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "57ea5507-e2f9-4cd7-8cd7-487608b41105",
+          "furnitureId": "desk",
+          "position": {
+            "x": 0,
+            "y": 0,
+            "z": -1.7
+          },
+          "rotation": {
+            "x": 0,
+            "y": 1.5707963267948966,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "4ad810dc-21ff-450d-90f0-c69bce0f544e",
+          "furnitureId": "chair",
+          "position": {
+            "x": -0.8,
+            "y": 0,
+            "z": -1.6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "e5f302c5-24d7-4709-9b0a-1022c0912482",
+          "furnitureId": "shelf",
+          "position": {
+            "x": 1.7,
+            "y": 0,
+            "z": -1.7
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        }
+      ]
+    },
+    {
+      "id": "46c6b8be-7d66-400a-b3bd-9be6b20da139",
+      "name": "Gaming",
+      "furniture": [
+        {
+          "instanceId": "57ea5507-e2f9-4cd7-8cd7-487608b41105",
+          "furnitureId": "desk",
+          "position": {
+            "x": 1.2,
+            "y": 0,
+            "z": 0.8
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1.2,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "4ad810dc-21ff-450d-90f0-c69bce0f544e",
+          "furnitureId": "chair",
+          "position": {
+            "x": -0.8,
+            "y": 0,
+            "z": -1.6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "e5f302c5-24d7-4709-9b0a-1022c0912482",
+          "furnitureId": "shelf",
+          "position": {
+            "x": 1.7,
+            "y": 0,
+            "z": -1.7
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "62091d2d-8720-4131-811b-d7376f444ba2",
+          "furnitureId": "sofa",
+          "position": {
+            "x": -1.1,
+            "y": 0,
+            "z": 1.1
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        },
+        {
+          "instanceId": "eb1b13e7-f843-4fcb-afe1-3df501adb2dd",
+          "furnitureId": "lamp",
+          "position": {
+            "x": -2,
+            "y": 0,
+            "z": -1.6
+          },
+          "rotation": {
+            "x": 0,
+            "y": 0,
+            "z": 0
+          },
+          "scale": {
+            "x": 1,
+            "y": 1,
+            "z": 1
+          },
+          "visible": true,
+          "locked": false
+        }
+      ]
+    }
+  ],
+  "activeLayoutId": "a63ecf75-291e-49d3-8686-7533f8bd96ba",
+  "measurements": [],
+  "settings": {
+    "autosave": true,
+    "confirmDelete": true,
+    "duration": 2,
+    "easing": "smooth"
+  }
+}

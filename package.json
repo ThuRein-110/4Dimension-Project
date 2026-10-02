@@ -1,0 +1,51 @@
+{
+  "name": "4d-livespace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
+  "engines": { "node": ">=22.12.0" },
+  "scripts": {
+    "dev": "tsx apps/server/src/index.ts",
+    "start": "tsx apps/server/src/index.ts --production",
+    "certs": "tsx scripts/certificates.ts",
+    "build": "vite build && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint . --max-warnings 0",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:production": "tsx scripts/smoke-production.ts",
+    "check": "npm run lint && npm run typecheck && npm test && npm run build"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "^4.7.0",
+    "express": "^5.1.0",
+    "lucide-react": "^0.468.0",
+    "selfsigned": "^5.5.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "ws": "^8.18.3",
+    "zod": "^3.25.76",
+    "three": "^0.186.1",
+    "js-aruco2": "2.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.30.0",
+    "@playwright/test": "^1.53.2",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.16.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@types/ws": "^8.18.1",
+    "@types/three": "^0.183.1",
+    "eslint": "^9.30.0",
+    "globals": "^16.3.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.35.1",
+    "vite": "^6.3.5",
+    "vitest": "4.1.11"
+  }
+}

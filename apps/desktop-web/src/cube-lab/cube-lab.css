@@ -1,0 +1,37 @@
+.cube-open .overlay-toolbar { display: none; }
+.cube-open .recalibrate-button { display: none; }
+.cube-open .planning .viewport-empty { display: flex; }
+.cube-panel .panel-title { padding: 0; }
+.cube-panel .property-section { padding: 16px 0; }
+.cube-panel dl { font-size: 11px; }
+.cube-panel dd { overflow-wrap: anywhere; }
+.cube-panel .cube-pose dd { color: #b9e768; font-variant-numeric: tabular-nums; }
+.cube-panel h3 { font-size: 12px; margin: 0 0 12px; }
+.cube-button-row { display: flex; gap: 6px; margin-top: 10px; }
+.cube-button-row button { flex: 1; font-size: 11px; min-width: 0; }
+.cube-library { margin-top: 12px; }
+.cube-library .saved-project-row > button:first-child { min-width: 0; padding: 8px; }
+.cube-library strong { font-size: 11px; }
+.cube-library small { font-size: 9px; }
+.cube-info { margin: 15px 0; font-size: 11px; line-height: 1.7; }
+.cube-info summary { cursor: pointer; color: #aeb7c2; }
+.cube-info pre { font-size: 10px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.cube-lost { border-color: #edac6b; color: #edac6b; }
+.cube-coordinate-label { position: absolute; transform: translateX(-50%); max-width: min(250px, 80%); padding: 4px 6px; font-size: 10px; background: #17191cdd; color: #b9e768; text-align: center; overflow-wrap: anywhere; z-index: 3; }
+.cube-corners { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cube-timeline .timeline-controls { margin-top: 12px; }
+.cube-time-track { flex: 1; min-width: 50px; margin-left: 12px; }
+.cube-time-track > input { width: 100%; margin: 0; display: block; }
+.cube-time-flags { position: relative; height: 17px; margin: 0 7px; }
+.cube-time-flags button { position: absolute; transform: translateX(-50%); width: 14px; min-height: 17px; height: 17px; padding: 0; border: 0; background: transparent; color: #63dbe9; }
+.cube-keyframes { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; max-height: 90px; overflow-y: auto; }
+.cube-keyframes label { display: flex; align-items: center; gap: 8px; font-size: 10px; }
+.cube-keyframes input { background: #14171a; border: 1px solid #3b454e; color: #dbe1e8; width: 120px; min-width: 0; padding: 6px; border-radius: 4px; }
+.cube-keyframes button { font-size: 10px; padding: 6px 8px; min-height: 29px; }
+.cube-keyframes small { color: #939fa9; }
+.cube-data { font-size: 10px; margin-top: 10px; }
+.cube-data summary { cursor: pointer; color: #aeb7c2; }
+.cube-data table { width: 100%; border-collapse: collapse; margin-top: 8px; font-variant-numeric: tabular-nums; }
+.cube-data th, .cube-data td { text-align: left; padding: 4px 8px; border-bottom: 1px solid #303339; }
+.cube-data[open] { max-height: 190px; overflow-y: auto; }
+@media (max-width: 850px) { .cube-panel { padding: 16px; } .cube-open .workspace { overflow: visible; } .cube-coordinate-label { font-size: 9px; } }
