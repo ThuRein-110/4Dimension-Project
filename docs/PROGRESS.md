@@ -190,3 +190,25 @@ marker regressions still pass; compiled production smoke passes. Desktop/mobile
 screenshots inspected; no browser runtime errors. Physical webcam mounting,
 manual alignment and tape-measure accuracy still require owner hardware tests.
 Those primary checks no longer depend on physical iPhone acceptance.
+
+## Webcam Startup Follow-up
+
+2026-10-02: normal webcam startup now has one lifecycle owner with a synchronous
+request lock, explicit metadata/playback confirmation, stage-specific 10-second
+guards, Stop/Restart and immediate track/video cleanup. Pending browser acquisition
+cannot overlap a second request after source cancellation. Preferred ideal
+1280x720/30 FPS constraints can fall back sequentially to `video: true`; stale
+device preferences are enumerated and replaced with the actual acquired device.
+Collapsed diagnostics and transition-only console logs preserve browser exception
+name/message and distinguish acquisition from playback failures.
+
+Lint, typecheck, 47 unit tests, all 39 browser tests, build and production smoke
+pass. One optional cube recording test timed out on the first full run, then passed
+unchanged both in isolation and in the final full run. Webcam lifecycle
+browser tests cover positive FPS/nonblank frames, Stop/start/Restart, sample/local/
+phone switches, failed playback, no duplicate acquisition and late-stream cleanup.
+Cube Lab detector/tracking code is unchanged. The real hardware-only startup probe
+reports `NotReadableError: Device in use`, before stream acquisition; physical
+startup is not accepted until the camera is available and the hardware checks pass.
+See [WEBCAM_STARTUP_DEBUG](WEBCAM_STARTUP_DEBUG.md) and run `npm run test:webcam`
+with other camera captures stopped. No competing applications were terminated.

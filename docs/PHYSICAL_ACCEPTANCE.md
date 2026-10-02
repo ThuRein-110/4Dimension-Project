@@ -36,6 +36,8 @@ iPhone/marker records below remain secondary; they do not gate webcam developmen
 | --- | --- |
 | Windows/browser/webcam model and fixed mounting | Pending |
 | Permission, live frames, resolution and FPS | Pending |
+| Webcam startup hardware probe (2026-10-02), without fake camera | NotReadableError: Device in use; no live frame verified |
+| Webcam Stop/start/Restart and sample/local switching on hardware | Pending camera availability; test-camera browser checks pass |
 | Manual A/B/C and measured A-B | Pending |
 | Grid/alignment and approximate measurement error | Pending |
 | Place/move/rotate/scale without phone or marker | Pending |

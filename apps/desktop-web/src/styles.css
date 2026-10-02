@@ -228,6 +228,11 @@ dd { margin: 0; text-align: right; color: #cdd2d9; }
 .network-selector select { background: transparent; color: #c6ccd4; border: 0; max-width: 130px; font-size: 10px; appearance: none; }
 .network-selector option { background: #25282d; }
 .stream-details { margin-top: 22px; border-top: 1px solid var(--border); padding-top: 23px; }
+.webcam-diagnostics { margin-top: 16px; font-size: 12px; }
+.webcam-diagnostics summary { cursor: pointer; padding: 8px 0; }
+.webcam-diagnostics dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+.webcam-diagnostics dt { margin-top: 8px; color: var(--muted); }
+.webcam-diagnostics dd { margin: 0; overflow-wrap: anywhere; }
 .stop-button { width: 100%; margin-top: 25px; background: transparent; font-size: 11px; color: #a6afb9; }
 .app-footer { height: 35px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; border-top: 1px solid var(--border); color: #787f89; font-size: 10px; gap: 12px; }
 .footer-divider { display: inline-block; width: 1px; height: 10px; background: #383e45; margin: 0 12px; vertical-align: middle; }
