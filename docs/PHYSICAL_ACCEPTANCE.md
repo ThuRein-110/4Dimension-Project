@@ -1,6 +1,11 @@
 # Physical Camera Acceptance
 
-## Current Cube Lab Experiment
+Current primary acceptance path: fixed Windows webcam, manual calibration, floor,
+furniture/transforms/measurement, T0/T1/T2, interpolation, comparison and PNG.
+iPhone and marker/Cube Lab hardware results are optional secondary checks and do
+not gate the webcam version.
+
+## Optional Cube Lab Experiment
 
 The owner reports the Windows webcam is already working. The physical cube
 experiment has not yet been tested by the owner. Automated marker-pixel tests
@@ -21,7 +26,7 @@ must not be treated as evidence of real lens accuracy or physical alignment.
 Run the exact two tests in [CUBE_MARKER_SETUP](CUBE_MARKER_SETUP.md). Do not call
 the first physical 4D milestone complete until these checks are recorded.
 
-## Previous Room Planner Protocol
+## Primary Webcam and Secondary iPhone Protocol
 
 Current development priority: fixed Windows webcam and manual calibration.
 iPhone/marker records below remain secondary; they do not gate webcam development.

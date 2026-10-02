@@ -2,15 +2,6 @@
 
 ## Current Development Priority
 
-The newest brief pauses further room-planner expansion until **4D Cube Lab** is
-physically proven: fixed Windows webcam -> transparent test cube -> real marker
-pose -> recording T -> trajectory -> scrub/interpolated replay -> named keyframes.
-The lab is a separate module and does not replace the existing camera or planner.
-Software milestones are implemented; physical acceptance remains pending. See
-docs/CUBE_MARKER_SETUP.md for measured dimensions, print assets and test steps.
-
-Previous room-planner sequence (preserved, not expanded in this experiment):
-
 Windows Webcam -> transparent overlay -> stable manual calibration -> floor ->
 furniture -> T0/T1/T2 -> animated 4D timeline. Webcam is the default source and
 uses explicit browser permission; iPhone pairing starts only when selected.
@@ -18,7 +9,10 @@ A fixed webcam and manual reference are the primary acceptance path. Recalibrate
 after moving it. Marker tracking and iPhone transport are optional secondary paths
 and their physical tests do not block webcam development.
 
-The latest extended brief supersedes the earlier camera-only development gate.
+The latest webcam-first instruction supersedes the earlier Cube Lab physical-test
+gate and camera-only development gate. Cube Lab remains an optional experiment;
+its marker/physical tests do not block the primary room-planning workflow.
+Improve marker tracking and iPhone support only after webcam features are reliable.
 Existing camera code was audited before extending it. Physical camera acceptance
 remains separate from automated development evidence.
 
@@ -55,8 +49,10 @@ remains separate from automated development evidence.
 Grouped implementation checks run lint, strict typecheck, unit tests and build;
 browser regressions preserve camera behavior and verify new workflows. Specific
 evidence and remaining physical checks are in docs/PROGRESS.md and TEST_PLAN.md.
-The full final live-room acceptance is not declared until physical iPhone, marker
-alignment and measured errors are recorded in PHYSICAL_ACCEPTANCE.md.
+Primary hardware acceptance requires a fixed Windows webcam, manual alignment,
+the full webcam-only workflow and measured errors in PHYSICAL_ACCEPTANCE.md.
+Physical iPhone and marker checks are separate secondary acceptance paths, not
+prerequisites for the webcam version.
 
 ## Decisions
 

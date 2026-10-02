@@ -1,5 +1,23 @@
 # Phase Progress Notes
 
+## Latest Priority: Fixed Webcam Room Planner
+
+The latest owner instruction restores Windows webcam -> transparent overlay ->
+manual calibration -> floor -> furniture -> T0/T1/T2 -> 4D timeline as the primary
+development path. The prior Cube Lab physical-test gate is superseded. Cube Lab,
+marker tracking and iPhone/WebRTC remain available but secondary. Existing code
+already defaults to webcam, pairs a phone only on selection, places manual
+calibration first, and provides Recalibrate while retaining room content.
+Project plan, README, hardware protocol and repository instructions now agree.
+
+Reverification: lint, strict typecheck, 35 unit tests, production build and nine
+camera/webcam browser tests pass. The webcam-only test covers manual calibration,
+floor, placement/move/rotate/scale, measurement, three layouts, interpolated
+timeline with continuing camera frames, comparison, PNG export and Recalibrate
+while asserting zero phone sessions/signaling sockets and zero marker workers.
+Permission failure/retry and optional WebRTC/QR/HTTPS regressions also pass.
+Physical room alignment/measurement error remains separate hardware acceptance.
+
 ## Latest: 4D Cube Lab
 
 Implemented as a separate workspace in the existing application. Windows webcam

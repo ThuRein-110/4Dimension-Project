@@ -23,14 +23,6 @@ Production: npm run build then npm start, with the dev host stopped first.
 
 ## Primary Workflow: Fixed Windows Webcam
 
-Current experiment: start webcam, then open **4D Cube Lab**. Print the ID 101 cube
-marker at 40 mm, enter your actual measured marker/cube sizes, start tracking,
-record movement, Stop, then scrub/replay and add named keyframes. Saved takes and
-JSON imports replay without a camera. A test-cube preview verifies the transparent
-overlay before tracking. Setup and physical acceptance:
-[CUBE_MARKER_SETUP](docs/CUBE_MARKER_SETUP.md).
-This is approximate camera-relative pose, not calibrated room reconstruction.
-
 Open the app and press Start webcam, allowing browser camera permission. Keep the
 webcam mounted in a fixed position. Open Calibration, select floor A/B/C, enter
 measured A-B distance and confirm. Use camera corrections to align approximately.
@@ -40,6 +32,17 @@ When the webcam moves, press Recalibrate in the webcam panel or planner viewport
 reselect the same physical origin/direction. Layouts and measurements are retained,
 but placement needs the new reference confirmed. Marker tracking is optional and
 collapsed below manual calibration. Capture starts only after your permission gesture.
+
+The active development priority is the complete webcam-only workflow. Neither
+iPhone connection nor the optional Cube Lab physical test blocks that work.
+
+## Optional Cube Lab
+
+Start webcam, then open **4D Cube Lab**. Print the ID 101 marker, enter measured
+marker/cube sizes, track, record, Stop, scrub/replay and add named keyframes.
+Saved takes and JSON imports replay without a camera. This separate experiment
+uses approximate camera-relative pose and requires a marker for real tracking;
+the room planner does not. Setup: [CUBE_MARKER_SETUP](docs/CUBE_MARKER_SETUP.md).
 
 ## Optional iPhone
 
