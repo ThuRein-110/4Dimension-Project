@@ -1,15 +1,18 @@
 import express from 'express';
 import { resolve } from 'node:path';
-import { mkdir, access, writeFile, rename, unlink } from 'node:fs/promises';
+import { mkdir, access, writeFile, rename, unlink, readFile } from 'node:fs/promises';
 import { isLoopback } from '../network.js';
 import { VideoPreparationService } from './video-service.js';
+import { analysisSchema,analysisIdentity } from '../../../../packages/shared/src/motion.js';
 
-export function motionRoutes(service = new VideoPreparationService()) {
+export function motionRoutes(service = new VideoPreparationService(), analysisRoot = resolve('.cache/4dlivespace/motion')) {
   const router = express.Router();
   router.use((req, res, next) => {
     const origin = req.get('origin');
     const foreignOrigin = origin && origin !== `${req.protocol}://${req.get('host')}`;
-    if (!isLoopback(req.socket.remoteAddress) || foreignOrigin || req.get('sec-fetch-site') === 'cross-site') {
+    let host = '';
+    try { host = new URL(`http://${req.get('host')}`).hostname; } catch { /* Invalid hosts cannot access private media. */ }
+    if (!['localhost','127.0.0.1','[::1]'].includes(host) || !isLoopback(req.socket.remoteAddress) || foreignOrigin || req.get('sec-fetch-site') === 'cross-site') {
       res.status(403).json({ error: 'Private motion media is available on this PC at localhost only.' }); return;
     }
     next();
@@ -25,6 +28,33 @@ export function motionRoutes(service = new VideoPreparationService()) {
     } catch { res.status(404).json({ error: 'Prepared video unavailable. Reload Motion Lab.' }); }
   });
   router.use('/wasm', express.static(resolve('node_modules/@mediapipe/tasks-vision/wasm'), { fallthrough: false }));
+  router.use('/analyses', express.json({limit:'64mb'}));
+  const writes = new Map<string,Promise<unknown>>();
+  router.get('/analyses/:id', async (req,res) => {
+    if (!/^[a-f0-9]{64}$/.test(req.params.id)) { res.sendStatus(400); return; }
+    try {
+      const data = analysisSchema.parse(JSON.parse(await readFile(resolve(analysisRoot,`${req.params.id}.json`),'utf8')));
+      if (data.id !== req.params.id || data.id !== await analysisIdentity(data.video.id,data.analysis.fps) || data.analysis.scope !== 'video') throw new Error('Cache identity mismatch');
+      res.json(data);
+    } catch(error) { res.status((error as NodeJS.ErrnoException).code === 'ENOENT' ? 404 : 422).json({error:'Analysis cache is missing or invalid. Analyze again.'}); }
+  });
+  router.put('/analyses/:id', async (req,res) => {
+    if (req.get('x-livespace-client') !== 'desktop') { res.sendStatus(403); return; }
+    const parsed = analysisSchema.safeParse(req.body);
+    if (!parsed.success || parsed.data.id !== req.params.id || parsed.data.analysis.scope !== 'video') { res.status(400).json({error:'Invalid motion analysis.'}); return; }
+    const data = parsed.data;
+    if (data.id !== await analysisIdentity(data.video.id,data.analysis.fps)) { res.status(400).json({error:'Analysis identity mismatch.'}); return; }
+    const file = resolve(analysisRoot,`${data.id}.json`);
+    const write = (writes.get(data.id) ?? Promise.resolve()).catch(() => undefined).then(async () => {
+      await mkdir(analysisRoot,{recursive:true}); const temporary = `${file}.${crypto.randomUUID()}.tmp`;
+      try { await writeFile(temporary,JSON.stringify(data),{flag:'wx'}); await rename(temporary,file); }
+      finally { await unlink(temporary).catch(() => undefined); }
+    });
+    writes.set(data.id,write);
+    try { await write; res.sendStatus(204); }
+    catch { res.status(500).json({error:'Analysis could not be cached. Check local disk space.'}); }
+    finally { if(writes.get(data.id)===write) writes.delete(data.id); }
+  });
   let downloading: Promise<void> | undefined;
   const model = resolve('.cache/4dlivespace/models/pose_landmarker_lite_v1.task');
   router.get('/model', async (_req, res) => {

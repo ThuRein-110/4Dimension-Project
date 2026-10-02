@@ -44,6 +44,32 @@ Saved takes and JSON imports replay without a camera. This separate experiment
 uses approximate camera-relative pose and requires a marker for real tracking;
 the room planner does not. Setup: [CUBE_MARKER_SETUP](docs/CUBE_MARKER_SETUP.md).
 
+## 4D Motion Lab
+
+Open **http://localhost:5173/motion** or the **4D Motion Lab** workspace tab.
+Place a MOV/MP4/M4V/WebM in the repository root; IMG_0135.MOV is preferred.
+The local server probes real metadata and caches an upright H.264 preview when
+needed. Wait for Pose model ready, then Analyze Motion. Real MediaPipe inference
+runs in a local browser worker, with a synchronized 2D/estimated 3D skeleton,
+source-time timeline, wrist trails, ghosts, manual golf keyframes, X/Y/Z/T
+inspection, graphs, experimental 2D club annotations and PNG/JSON exports.
+Analysis/settings/annotations cache locally; Save with Project stores references,
+not media. Existing webcam/planner/Cube workflows remain separate.
+
+**Your video is not uploaded to GitHub or external AI services.** Root videos,
+prepared media, model/pose caches and test screenshots are ignored by Git.
+Only the public pose model downloads once; subsequent inference is local.
+Depth/velocity are monocular estimates, not professional motion capture.
+Whole-video analysis currently accepts clips up to two minutes; playable Local
+Media is also supported. Root discovery/preparation remains localhost-only.
+
+Guide: [Motion Lab](docs/MOTION_LAB_USER_GUIDE.md).
+Design: [Architecture](docs/MOTION_LAB_ARCHITECTURE.md).
+Checks: `npm run test:motion` uses your real local clip and model, saves private
+evidence under ignored test-results and checks desktop/mobile rendering and sync.
+CI pose mocks exist only in tests. See [Test Plan](docs/MOTION_LAB_TEST_PLAN.md)
+and [Limitations](docs/MOTION_LAB_LIMITATIONS.md).
+
 ## Optional iPhone
 
 1. Use the same trusted Wi-Fi and permit Node/desktop browser on Private networks.

@@ -20,7 +20,8 @@ export class PoseEngine {
     return new Promise<MotionPoseSample | undefined>((resolve, reject) => {
       const timer = setTimeout(() => { this.pending.delete(id); reject(new Error('Pose worker timed out. Retry model initialization.')); }, type === 'init' ? 180000 : 30000);
       this.pending.set(id, { resolve, reject, timer });
-      this.worker.postMessage({ id, type, bitmap, timeSeconds, frameIndex }, bitmap ? [bitmap] : []);
+      try { this.worker.postMessage({ id, type, bitmap, timeSeconds, frameIndex }, bitmap ? [bitmap] : []); }
+      catch(error) { clearTimeout(timer); this.pending.delete(id); bitmap?.close(); reject(error instanceof Error ? error : new Error('Pose frame transfer failed.')); }
     });
   }
   async initialize() { await this.call('init'); }

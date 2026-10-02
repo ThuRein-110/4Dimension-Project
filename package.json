@@ -22,6 +22,7 @@
     "test:production": "tsx scripts/smoke-production.ts",
     "test:cube:webcam": "tsx scripts/check-cube-webcam.ts",
     "test:webcam": "tsx scripts/check-webcam.ts",
+    "test:motion": "tsx scripts/check-motion.ts",
     "check": "npm run lint && npm run typecheck && npm test && npm run build"
   },
   "dependencies": {

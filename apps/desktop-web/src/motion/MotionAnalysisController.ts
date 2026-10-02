@@ -24,7 +24,7 @@ export class MotionAnalysisController {
     const samples: MotionPoseSample[] = [];
     try {
       const loaded = waitForMedia(video, 'loadeddata', signal); video.src = url; video.load(); await loaded;
-      if (video.duration > 7200) throw new Error('Use a clip shorter than two hours for offline analysis.');
+      if (video.duration > 120 && singleTime === undefined) throw new Error('Use a clip shorter than two minutes for whole-video analysis. Single-frame review remains available.');
       await this.engine.reset();
       const timestamps = singleTime === undefined ? Array.from({ length: Math.ceil(video.duration * fps) }, (_, i) => Math.min(i/fps, video.duration-.001)) : [Math.min(singleTime, video.duration-.001)];
       const started = performance.now(); let valid = 0;
@@ -34,11 +34,12 @@ export class MotionAnalysisController {
         if (Math.abs(video.currentTime-time) > .0001) { const seeked = waitForMedia(video, 'seeked', signal); video.currentTime = time; await seeked; }
         signal.throwIfAborted();
         const bitmap = await createImageBitmap(video);
+        if(signal.aborted) {bitmap.close();signal.throwIfAborted();}
         const sample = await this.engine.infer(bitmap, video.currentTime, Math.round(video.currentTime * metadata.fps));
         signal.throwIfAborted(); samples.push(sample); if (sample.valid) valid++;
         progress({ done: samples.length, total: timestamps.length, valid, missing: samples.length-valid, elapsedMs: performance.now()-started });
       }
-      return { schemaVersion: 1, id: await analysisIdentity(metadata.id,fps), video: { ...metadata, duration: video.duration },
+      return { schemaVersion: 1, id: await analysisIdentity(metadata.id,fps), video: { ...metadata, duration: video.duration,width:video.videoWidth,height:video.videoHeight },
         analysis: { scope: singleTime === undefined ? 'video' : 'frame', fps, modelVersion: MODEL_VERSION, landmarkNames: [...LANDMARK_NAMES], coordinateSystem: 'mediapipe-raw; three=(x,-y,-z); hip-relative-estimated' }, samples, keyframes: [], display: { ...defaultDisplay }, club: [], derived: { validFrames: valid, missingFrames: samples.length-valid } };
     } finally { video.pause(); video.removeAttribute('src'); video.load(); }
   }

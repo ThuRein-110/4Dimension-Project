@@ -1,5 +1,6 @@
 import { describe,it,expect } from 'vitest';
-import { analysisIdentity, analysisSchema, defaultDisplay, LANDMARK_NAMES, MODEL_VERSION, sampleAt, estimatedVelocity, toThree, jointAt, type MotionPoseSample } from '../../packages/shared/src/motion.js';
+import { analysisIdentity, analysisSchema, defaultDisplay, LANDMARK_NAMES, MODEL_VERSION, sampleAt, estimatedVelocity, toThree, jointAt, spatialJointAt, type MotionPoseSample } from '../../packages/shared/src/motion.js';
+import { createProject,parseProject } from '../../packages/shared/src/project.js';
 import { contentRect } from '../../packages/three-engine/src/CameraProjectionManager.js';
 
 const pose = (timeSeconds: number, x = 0): MotionPoseSample => ({ timeSeconds, frameIndex: Math.round(timeSeconds*30), valid: true, poseConfidence: .9, inferenceMs: 20, landmarks2D: LANDMARK_NAMES.map((name,id) => ({ id,name,x,y: .5,z: .1,visibility: .9 })),worldLandmarks: LANDMARK_NAMES.map((name,id) => ({ id,name,x,y: .5,z: .1,visibility: .9 })) });
@@ -28,5 +29,13 @@ describe('real sample motion math', () => {
     expect(analysisSchema.safeParse({...data,samples:[pose(.1),pose(0)]}).success).toBe(false);
     expect(analysisSchema.safeParse({...data,derived:{validFrames:100,missingFrames:0}}).success).toBe(false);
     expect(analysisSchema.safeParse({...data,keyframes:[{id:crypto.randomUUID(),name:'Impact',timeSeconds:10}]}).success).toBe(false);
+  });
+  it('preserves optional project references without media and labels normalized fallbacks',async()=>{
+    const project=createProject();const original=parseProject(project);expect(original.motion).toBeUndefined();
+    project.motion={videoId:'test-video',preparedVideoReference:'/api/motion/demo/stream?id=test',analysisId:await analysisIdentity('test-video',15),analysisFps:15,keyframes:[],display:defaultDisplay};
+    expect(parseProject(JSON.parse(JSON.stringify(project))).motion?.videoId).toBe('test-video');
+    expect(JSON.stringify(project).length).toBeLessThan(5000);
+    expect(spatialJointAt({...pose(0),worldLandmarks:undefined},16)?.x).toBe(0);
+    expect(estimatedVelocity([pose(0),{...pose(.1),worldLandmarks:undefined}],1,16)).toBeNull();
   });
 });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { displaySchema, keyframeSchema } from './motion.js';
 
 const number = z.number().finite();
 const coordinate = number.min(-10000).max(10000);
@@ -36,6 +37,7 @@ export const projectSchema = z.object({
   room: z.object({ name, width: number.min(0.5).max(100), length: number.min(0.5).max(100), height: number.min(0.5).max(30) }),
   calibration: calibrationSchema, layouts: z.array(layoutSchema).min(1).max(50), activeLayoutId: id,
   measurements: z.array(measurementSchema).max(500),
+  motion: z.object({ videoId: z.string().min(1).max(512), preparedVideoReference: z.string().max(600), analysisId: z.string().regex(/^[a-f0-9]{64}$/), analysisFps: z.union([z.literal(10),z.literal(15),z.literal(30)]), keyframes: z.array(keyframeSchema).max(100), display: displaySchema }).optional(),
   settings: z.object({ autosave: z.boolean(), confirmDelete: z.boolean(), duration: number.min(0.5).max(5), easing: z.enum(['linear', 'smooth']) }),
 }).superRefine((project, context) => {
   if (!project.layouts.some(layout => layout.id === project.activeLayoutId)) context.addIssue({ code: 'custom', message: 'Active layout does not exist' });

@@ -1,5 +1,5 @@
 import { BufferAttribute, BufferGeometry, Group, LineBasicMaterial, LineSegments, Mesh, MeshStandardMaterial, SphereGeometry } from 'three';
-import { CONNECTIONS, jointAt, toThree, type MotionPoseSample } from '../../../../packages/shared/src/motion.js';
+import { CONNECTIONS, spatialJointAt, toThree, type MotionPoseSample } from '../../../../packages/shared/src/motion.js';
 
 export class MotionSkeletonRenderer {
   readonly group = new Group();
@@ -17,15 +17,15 @@ export class MotionSkeletonRenderer {
     this.group.add(...this.joints,this.bones);
   }
   update(sample: MotionPoseSample | null, showJoints = true, showBones = true) {
-    this.group.visible = !!sample?.valid && sample.worldLandmarks?.length === 33;
+    this.group.visible = !!sample?.valid && sample.landmarks2D.length === 33;
     if (!this.group.visible) return;
     for (let id = 0; id < 33; id++) {
-      const point = jointAt(sample,id); this.joints[id].visible = !!point && showJoints;
+      const point = spatialJointAt(sample,id); this.joints[id].visible = !!point && showJoints;
       if (point) { const mapped = toThree(point); this.joints[id].position.set(mapped.x,mapped.y,mapped.z); }
     }
     let cursor = 0;
     for (const [a,b] of CONNECTIONS) {
-      const p = jointAt(sample,a), q = jointAt(sample,b); if (!p || !q) continue;
+      const p = spatialJointAt(sample,a), q = spatialJointAt(sample,b); if (!p || !q) continue;
       for (const point of [toThree(p),toThree(q)]) { this.positions[cursor++] = point.x; this.positions[cursor++] = point.y; this.positions[cursor++] = point.z; }
     }
     this.bones.visible = showBones; this.bonesGeometry.setDrawRange(0,cursor/3); this.bonesGeometry.attributes.position.needsUpdate = true;

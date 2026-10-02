@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Activity, Box, Camera, Download, Expand, RefreshCw, Upload, Video, X } from 'lucide-react';
+import { Activity, Box, Camera, Download, Expand, RefreshCw, Save, Upload, Video, X } from 'lucide-react';
 import { analysisIdentity } from '../../../../packages/shared/src/motion.js';
 import { motion, useMotion } from './store.js';
 import { PoseEngine } from './PoseEngine.js';
@@ -13,17 +13,22 @@ import { JointInspector } from './JointInspector.js';
 import { MotionDataPanel } from './MotionDataPanel.js';
 import { MotionDiagnostics } from './MotionDiagnostics.js';
 import { exportAnalysis,exportScreenshot } from './export.js';
+import { workspace,useWorkspace } from '../planner/store.js';
+import { saveProject,useAutosave } from '../planner/project-client.js';
 import type { VideoMetadata } from './types.js';
 import './motion.css';
 
 export function MotionLab() {
   const state = useMotion(), { metadata, analysis } = state;
+  const projectState = useWorkspace();
+  useAutosave();
   const [video,setVideo] = useState<HTMLVideoElement | null>(null), [time,setTime] = useState(0), [playing,setPlaying] = useState(false);
   const [localUrl,setLocalUrl] = useState(''), [modelRetry,setModelRetry] = useState(0);
   const [clubMode,setClubMode] = useState(false), [captureMode,setCaptureMode] = useState<'video'|'3d'|'split'>('split');
   const [decodedTime,setDecodedTime] = useState<number|null>(null);
   const decoded = useRef<number|null>(null), views = useRef<HTMLDivElement>(null);
   const root = useRef<VideoMetadata | null>(null), fileInput = useRef<HTMLInputElement>(null);
+  const sourceKind = useRef<'demo'|'local'>('demo');
   const engine = useRef<PoseEngine | null>(null), controller = useRef<MotionAnalysisController | null>(null);
   useEffect(() => {
     let cancelled = false; let timer: ReturnType<typeof setTimeout>;
@@ -32,24 +37,31 @@ export function MotionLab() {
         const response = await fetch('/api/motion/demo/info'); const data = await response.json();
         if (!response.ok) throw new Error(data.error);
         if (cancelled) return;
-        root.current = data; motion.set({ metadata: data });
+        root.current = data;
+        if(sourceKind.current==='demo') { const reference=workspace.get().project.motion; motion.set({metadata:data,...(reference && reference.videoId===data.id?{fps:reference.analysisFps}:{})}); }
         if (data.status === 'preparing') timer = setTimeout(() => void poll(),1000);
         else if (data.status === 'error') motion.set({ error: data.error });
-      } catch (error) { if (!cancelled) motion.set({ error: error instanceof Error ? error.message : 'Demo video unavailable.' }); }
+      } catch (error) { if (!cancelled && sourceKind.current==='demo') motion.set({ error: error instanceof Error ? error.message : 'Demo video unavailable.' }); }
     };
     void poll(); return () => { cancelled = true; clearTimeout(timer); };
   }, []);
   useEffect(() => {
     let active = true; const worker = new PoseEngine(); engine.current = worker; motion.set({ model: 'loading' });
     void worker.initialize().then(() => { if (active) motion.set({ model: 'ready' }); }).catch(error => { if (active) motion.set({ model: 'error', error: `Pose initialization failed: ${error.message}` }); });
-    return () => { active = false; controller.current?.cancel(); worker.dispose(); engine.current = null; };
+    return () => { active = false; controller.current?.cancel(); controller.current = null; worker.dispose(); engine.current = null; };
   }, [modelRetry]);
   useEffect(() => () => { if (localUrl) URL.revokeObjectURL(localUrl); }, [localUrl]);
   useEffect(() => {
     if (!metadata?.duration || metadata.status !== 'ready') return;
     let active = true;
     motion.set({ analysis: null, status: 'idle', cacheHit: false, progress: null });
-    void analysisIdentity(metadata.id,state.fps).then(loadAnalysis).then(cached => { if (active && cached) { motion.load(cached); motion.set({ cacheHit: true }); } }).catch(error => { if (active) motion.set({ error: error.message }); });
+    void analysisIdentity(metadata.id,state.fps).then(loadAnalysis).then(cached => {
+      if (active && cached) {
+        const reference = workspace.get().project.motion;
+        if(reference?.analysisId===cached.id) cached = {...cached,keyframes:reference.keyframes,display:reference.display};
+        motion.load(cached); motion.set({ cacheHit: true });
+      }
+    }).catch(error => { if (active) motion.set({ error: error.message }); });
     return () => { active = false; };
   }, [metadata?.id,metadata?.duration,metadata?.status,state.fps]);
   useEffect(() => {
@@ -71,10 +83,12 @@ export function MotionLab() {
   async function analyze(single = false) {
     if (!metadata || !engine.current || busy || state.model !== 'ready') return;
     video?.pause(); motion.set({ status: 'analyzing', error: '', progress: null });
+    const previous=motion.get().analysis;
     const run = new MotionAnalysisController(engine.current); controller.current = run;
     try {
-      const result = await run.analyze(metadata,url,state.fps,progress => motion.set({ progress }),single ? video?.currentTime ?? time : undefined);
+      let result = await run.analyze(metadata,url,state.fps,progress => motion.set({ progress }),single ? video?.currentTime ?? time : undefined);
       if (controller.current !== run) return;
+      result={...result,display:motion.get().display,...(previous?.video.id===metadata.id?{keyframes:previous.keyframes,club:previous.club}:{})};
       motion.load(result); motion.set({ cacheHit: false });
       await saveAnalysis(result);
     } catch (error) {
@@ -82,9 +96,17 @@ export function MotionLab() {
       motion.set({ status: error instanceof DOMException && error.name === 'AbortError' ? 'cancelled' : 'idle', error: error instanceof DOMException && error.name === 'AbortError' ? 'Analysis cancelled. Previous completed data is retained.' : error instanceof Error ? error.message : 'Analysis failed.' });
     } finally { if (controller.current === run) controller.current = null; }
   }
-  function changeSource(next: VideoMetadata | null, local = '') { controller.current?.cancel(); video?.pause(); setLocalUrl(local); setTime(0); motion.set({ metadata: next, analysis: null, progress: null, error: '', status: 'idle', cacheHit: false }); }
+  function changeSource(next: VideoMetadata | null, local = '') { sourceKind.current = local ? 'local' : 'demo'; controller.current?.cancel(); controller.current=null; video?.pause(); setLocalUrl(local); setTime(0); motion.set({ metadata: next, analysis: null, progress: null, error: '', status: 'idle', cacheHit: false }); }
+  async function attachProject() {
+    if(!analysis || analysis.analysis.scope!=='video') return;
+    try {
+      await saveAnalysis(analysis);
+      workspace.edit(project => { project.motion = { videoId:analysis.video.id,preparedVideoReference:localUrl?'Local Media (reselect file)':metadata?.url ?? '',analysisId:analysis.id,analysisFps:analysis.analysis.fps,keyframes:analysis.keyframes,display:analysis.display }; });
+      await saveProject();
+    } catch(error) { motion.set({error:error instanceof Error?error.message:'Project save failed.'}); }
+  }
   return <div className="motion-app">
-    <header className="app-header"><a className="brand" href="/"><span className="brand-mark"><Video size={21} /></span><strong>4D LiveSpace</strong><span className="version-tag">LOCAL</span></a><div className="workspace-name"><Activity size={16} />4D Motion Lab</div><span className="muted">Private / on this PC</span></header>
+    <header className="app-header"><a className="brand" href="/"><span className="brand-mark"><Video size={21} /></span><strong>4D LiveSpace</strong><span className="version-tag">LOCAL</span></a><div className="workspace-name"><Activity size={16} />4D Motion Lab</div><span className="muted">Private / on this PC</span><button disabled={!analysis || analysis.analysis.scope!=='video' || projectState.busy} onClick={() => void attachProject()}><Save size={15} />Save with Project</button><span className="muted">{projectState.project.name}</span></header>
     <nav className="mode-bar" aria-label="Workspace modes"><div className="mode-tabs"><a href="/"><Camera size={15} />Camera</a><a href="/?workspace=cube"><Box size={15} />4D Cube Lab</a><a href="/motion" className="active" aria-current="page"><Activity size={15} />4D Motion Lab</a>{['calibration','place','edit','measure','layouts','timeline','compare'].map(mode => <a key={mode} href={`/?workspace=${mode}`}>{mode[0].toUpperCase()+mode.slice(1)}</a>)}</div></nav>
     <main className="motion-main">
       <section className="motion-heading"><h1>4D Motion Lab</h1><div className="motion-actions"><button disabled={busy} onClick={() => changeSource(root.current)}>Demo Video</button><button disabled={busy} onClick={() => fileInput.current?.click()}><Upload size={16} />Local Media</button><input ref={fileInput} type="file" accept="video/*,.mov,.mp4,.m4v,.webm" hidden onChange={event => { const file = event.target.files?.[0]; if (file) changeSource({ id: `local-${file.name}-${file.size}-${file.lastModified}`, name: file.name, size: file.size, mtimeMs: file.lastModified, codec: 'Browser decoded', width: 0,height: 0,fps: 30,duration: 0,rotation: 0,pixelFormat: 'Browser decoded',status: 'ready',prepared: false,url: '' },URL.createObjectURL(file)); event.target.value = ''; }} /></div></section>

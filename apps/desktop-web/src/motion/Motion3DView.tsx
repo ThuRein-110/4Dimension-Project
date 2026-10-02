@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import { Expand, RotateCcw } from 'lucide-react';
 import { AmbientLight, AxesHelper, BufferAttribute, BufferGeometry, Color, DirectionalLight, GridHelper, LineBasicMaterial, LineSegments, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { jointAt, sampleAt, toThree, type MotionAnalysis } from '../../../../packages/shared/src/motion.js';
-import { motion } from './store.js';
+import { spatialJointAt, sampleAt, toThree, type MotionAnalysis } from '../../../../packages/shared/src/motion.js';
+import { motion,useMotion } from './store.js';
 import { MotionSkeletonRenderer } from './MotionSkeletonRenderer.js';
 
 type Preset = 'Perspective' | 'Front' | 'Side' | 'Top';
 export function Motion3DView({ video }: { video: HTMLVideoElement | null }) {
   const host = useRef<HTMLDivElement>(null), changeView = useRef<(preset: Preset) => void>(() => undefined);
   const [preset,setPreset] = useState<Preset>('Perspective'), [error,setError] = useState('');
+  const state=useMotion(), normalized=!!state.analysis?.samples.some(sample=>sample.valid&&!sample.worldLandmarks?.length);
   useEffect(() => {
     if (!host.current) return;
     const mount = host.current; let renderer: WebGLRenderer;
@@ -47,7 +48,8 @@ export function Motion3DView({ video }: { video: HTMLVideoElement | null }) {
           for (let index = 1; index < data.samples.length; index++) {
             const a = data.samples[index-1],b = data.samples[index];
             if ((!options.future && b.timeSeconds > time) || (options.trailWindow && a.timeSeconds < time-options.trailWindow) || b.timeSeconds-a.timeSeconds > .2) continue;
-            const p = jointAt(a,id),q = jointAt(b,id); if (!p || !q) continue;
+            if(!!a.worldLandmarks?.length !== !!b.worldLandmarks?.length) continue;
+            const p = spatialJointAt(a,id),q = spatialJointAt(b,id); if (!p || !q) continue;
             for (const point of [toThree(p),toThree(q)]) { positions[offset++] = point.x; positions[offset++] = point.y; positions[offset++] = point.z; }
           }
           path.geometry.setDrawRange(0,offset/3); path.geometry.attributes.position.needsUpdate = true;
@@ -56,6 +58,7 @@ export function Motion3DView({ video }: { video: HTMLVideoElement | null }) {
       paths.forEach(path => { path.visible = !!data && options.trails; });
       renderer.domElement.dataset.sampleTime = sample?.timeSeconds.toFixed(4) ?? 'unavailable';
       renderer.domElement.dataset.poseVisible = String(current.group.visible);
+      renderer.domElement.dataset.space = sample?.worldLandmarks?.length ? 'estimated-world' : 'normalized';
       controls.update(); renderer.render(scene,camera); frame = requestAnimationFrame(animate);
     };
     animate();
@@ -63,5 +66,5 @@ export function Motion3DView({ video }: { video: HTMLVideoElement | null }) {
     renderer.domElement.addEventListener('webglcontextlost',lost);
     return () => { cancelAnimationFrame(frame); observer.disconnect(); renderer.domElement.removeEventListener('webglcontextlost',lost); controls.dispose(); current.dispose(); ghosts.forEach(ghost => ghost.dispose()); paths.forEach(path => { path.geometry.dispose(); (path.material as LineBasicMaterial).dispose(); }); grid.geometry.dispose(); if (Array.isArray(grid.material)) grid.material.forEach(material => material.dispose()); else grid.material.dispose(); axes.geometry.dispose(); if (Array.isArray(axes.material)) axes.material.forEach(material => material.dispose()); else axes.material.dispose(); renderer.dispose(); renderer.forceContextLoss(); renderer.domElement.remove(); };
   }, [video]);
-  return <section className="motion-view"><header><strong>Estimated 3D Motion</strong><div className="motion-actions"><select aria-label="3D view preset" value={preset} onChange={event => { const value = event.target.value as Preset; setPreset(value); changeView.current(value); }}>{['Perspective','Front','Side','Top'].map(value => <option key={value}>{value}</option>)}</select><button title="Reset 3D view" aria-label="Reset 3D view" onClick={() => { setPreset('Perspective'); changeView.current('Perspective'); }}><RotateCcw size={15} /></button><button title="Fullscreen 3D" aria-label="Fullscreen 3D" onClick={() => void host.current?.requestFullscreen().catch(error => motion.set({error:error.message}))}><Expand size={16} /></button></div></header><div ref={host} className="motion-3d-stage">{error && <p role="alert">{error}</p>}</div><div className="motion-axis-legend"><span>X horizontal</span><span>Y up</span><span>Z estimated depth</span><span>Hip-relative / reference floor</span></div></section>;
+  return <section className="motion-view"><header><strong>Estimated 3D Motion</strong><div className="motion-actions"><select aria-label="3D view preset" value={preset} onChange={event => { const value = event.target.value as Preset; setPreset(value); changeView.current(value); }}>{['Perspective','Front','Side','Top'].map(value => <option key={value}>{value}</option>)}</select><button title="Reset 3D view" aria-label="Reset 3D view" onClick={() => { setPreset('Perspective'); changeView.current('Perspective'); }}><RotateCcw size={15} /></button><button title="Fullscreen 3D" aria-label="Fullscreen 3D" onClick={() => void host.current?.requestFullscreen().catch(error => motion.set({error:error.message}))}><Expand size={16} /></button></div></header><div ref={host} className="motion-3d-stage">{error && <p role="alert">{error}</p>}</div><div className="motion-axis-legend"><span>X horizontal</span><span>Y up</span><span>Z estimated depth</span><span>{normalized ? 'Normalized model pose fallback / not metric' : 'Hip-relative / reference floor'}</span></div></section>;
 }

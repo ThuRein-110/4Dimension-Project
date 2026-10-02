@@ -2,6 +2,13 @@
 .mode-tabs a { display: inline-flex; align-items: center; gap: 7px; padding: 10px 13px; color: #aeb7c6; text-decoration: none; font-size: 12px; white-space: nowrap; border-bottom: 2px solid transparent; }
 .mode-tabs a.active { color: #6ee7b7; border-color: #34d399; background: #192723; }
 .motion-main { padding: 18px 24px; max-width: 1800px; margin: auto; }
+.motion-app select, .motion-app input[type=number] { background: #242a32; color: #e5e8ef; border: 1px solid #414953; border-radius: 4px; padding: 5px 7px; font-size: 12px; max-width: 100%; }
+.motion-app .segmented button[aria-pressed=true] { background: #254335; color: #6ee7b7; }
+.motion-app .segmented { min-width: 0; }
+.motion-app .mode-tabs { overflow-x: auto; }
+.motion-app .mode-bar { display: block; }
+.motion-app .mode-tabs { display: flex; flex-wrap: nowrap; min-width: 0; width: 100%; }
+.motion-app .mode-tabs a { flex-shrink: 0; }
 .motion-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .motion-heading h1 { font-size: 22px; margin: 0; }
 .motion-actions, .motion-transport, .motion-metadata { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
@@ -30,7 +37,7 @@
 .motion-3d-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .view-video { grid-template-columns: minmax(0,1fr); }
 .view-video > section:nth-child(2) { display: none; }
-.view-3d > section:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; visibility: hidden; }
+.view-3d > section:first-child { position: absolute; width: min(100%,700px); left: -10000px; visibility: hidden; }
 .view-3d { grid-template-columns: minmax(0,1fr); }
 .view-3d > section:nth-child(2) { grid-column: 1; }
 .motion-axis-legend { display: flex; flex-wrap: wrap; gap: 14px; color: #abb5c5; font-size: 11px; padding: 8px 12px; }
@@ -49,8 +56,8 @@
 .motion-inspector small { color: #abb5c5; }
 .motion-chart { width: 100%; min-height: 220px; margin-top: 12px; }
 .motion-table-scroll { overflow: auto; margin: 12px 0; }
-.motion-data table { border-collapse: collapse; width: 100%; min-width: 530px; font-variant-numeric: tabular-nums; }
-.motion-data th, .motion-data td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #303640; }
+.motion-table-scroll table { border-collapse: collapse; width: 100%; min-width: 530px; font-variant-numeric: tabular-nums; }
+.motion-table-scroll th, .motion-table-scroll td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #303640; }
 .motion-diagnostics dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 18px; }
 .motion-diagnostics dd { margin: 0; font-variant-numeric: tabular-nums; }
 .motion-help p { max-width: 800px; color: #abb5c5; line-height: 1.6; }
@@ -59,4 +66,5 @@
 .motion-views:fullscreen { width: 100vw; height: 100vh; padding: 12px; background: #111318; }
 .motion-views:fullscreen .motion-video-stage, .motion-views:fullscreen .motion-3d-stage { height: calc(100vh - 90px); }
 @media(max-width: 850px) { .motion-views { grid-template-columns: minmax(0,1fr); } .motion-video-stage, .motion-3d-stage { height: 50vh; } .motion-view-controls .segmented { flex-wrap: wrap; } .motion-views:fullscreen { overflow: auto; } .motion-views:fullscreen .motion-video-stage, .motion-views:fullscreen .motion-3d-stage { height: 44vh; } }
+@media(max-width: 620px) { .mode-tabs a { min-width: 0; max-width: 100%; white-space: normal; font-size: 10px; padding: 8px 4px; flex-direction: column; text-align: center; } .motion-app .mode-tabs a { white-space: nowrap; flex-direction: row; padding: 10px; font-size: 11px; } }
 @media(max-width: 700px) { .motion-main { padding: 14px 12px; } .motion-heading h1 { font-size: 20px; } .motion-app .app-header { flex-wrap: wrap; height: auto; padding: 12px; gap: 10px; } }

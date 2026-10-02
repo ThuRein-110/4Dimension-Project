@@ -6,6 +6,9 @@ const database = () => new Promise<IDBDatabase>((resolve, reject) => {
   request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
 });
 export async function loadAnalysis(id: string): Promise<MotionAnalysis | null> {
+  const response = await fetch(`/api/motion/analyses/${id}`);
+  if (response.ok) { const data = analysisSchema.parse(await response.json()); if(data.id !== id) throw new Error('Cache identity mismatch.'); return data; }
+  if (response.status !== 404) throw new Error('Local analysis cache is invalid or unavailable. Analyze again.');
   const db = await database();
   try {
     return await new Promise((resolve, reject) => {
@@ -21,4 +24,6 @@ export async function saveAnalysis(analysis: MotionAnalysis) {
   try {
     await new Promise<void>((resolve, reject) => { const tx = db.transaction('analyses','readwrite'); tx.objectStore('analyses').put(data); tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
   } finally { db.close(); }
+  const response = await fetch(`/api/motion/analyses/${data.id}`,{method:'PUT',headers:{'Content-Type':'application/json','x-livespace-client':'desktop'},body:JSON.stringify(data)});
+  if(!response.ok) throw new Error('Local analysis cache could not be saved.');
 }

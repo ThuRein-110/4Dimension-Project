@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppErrorBoundary } from './AppErrorBoundary.js';
 import './styles.css';
@@ -8,6 +8,20 @@ const CameraApp = lazy(() => import('../../phone-camera/src/CameraApp.js').then(
 const RawWebcamApp = lazy(() => import('./webcam/RawWebcamApp.js').then(module => ({ default: module.RawWebcamApp })));
 const MotionLab = lazy(() => import('./motion/MotionLab.js').then(module => ({ default: module.MotionLab })));
 
-createRoot(document.getElementById('root')!).render(
-  <React.StrictMode><AppErrorBoundary><Suspense fallback={<main className="app-loading" role="status">Opening 4D LiveSpace...</main>}>{location.pathname === '/camera' ? <CameraApp /> : location.pathname === '/webcam-test' ? <RawWebcamApp /> : location.pathname === '/motion' ? <MotionLab /> : <DesktopApp />}</Suspense></AppErrorBoundary></React.StrictMode>,
-);
+function WorkspaceRouter() {
+  const [route,setRoute] = useState(location.pathname+location.search);
+  useEffect(() => {
+    const changed = () => setRoute(location.pathname+location.search);
+    const navigate = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as HTMLElement).closest<HTMLAnchorElement>('.mode-bar a,.brand');
+      if (!anchor || anchor.target || anchor.origin !== location.origin || !['/','/motion'].includes(anchor.pathname)) return;
+      event.preventDefault(); history.pushState(null,'',anchor.href); changed();
+    };
+    document.addEventListener('click',navigate); addEventListener('popstate',changed);
+    return () => { document.removeEventListener('click',navigate); removeEventListener('popstate',changed); };
+  }, []);
+  const pathname = route.split('?')[0];
+  return <Suspense fallback={<main className="app-loading" role="status">Opening 4D LiveSpace...</main>}>{pathname === '/camera' ? <CameraApp /> : pathname === '/webcam-test' ? <RawWebcamApp /> : pathname === '/motion' ? <MotionLab /> : <DesktopApp />}</Suspense>;
+}
+createRoot(document.getElementById('root')!).render(<React.StrictMode><AppErrorBoundary><WorkspaceRouter /></AppErrorBoundary></React.StrictMode>);

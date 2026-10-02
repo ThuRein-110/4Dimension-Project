@@ -41,6 +41,11 @@ export function jointAt(sample: MotionPoseSample | null, id: number, world = tru
   if (!a || !b || Math.min(a.visibility, b.visibility) < .35) return null;
   return { id: 23, name: 'Hip center', x: (a.x+b.x)/2, y: (a.y+b.y)/2, z: (a.z+b.z)/2, visibility: Math.min(a.visibility,b.visibility) };
 }
+export function spatialJointAt(sample: MotionPoseSample | null,id:number): MotionLandmark | null {
+  if(sample?.worldLandmarks?.length===33) return jointAt(sample,id);
+  const point=jointAt(sample,id,false),hips=jointAt(sample,33,false);
+  return point && hips ? {...point,x:point.x-hips.x,y:point.y-hips.y,z:point.z-hips.z} : null;
+}
 export function sampleAt(samples: MotionPoseSample[], time: number, maxGap = .2): MotionPoseSample | null {
   if (!samples.length) return null;
   let lo = 0, hi = samples.length;
@@ -56,6 +61,7 @@ export function sampleAt(samples: MotionPoseSample[], time: number, maxGap = .2)
 export function estimatedVelocity(samples: MotionPoseSample[], index: number, joint: number) {
   const a = samples[index-1], b = samples[index];
   if (!a || !b || b.timeSeconds-a.timeSeconds > .2) return null;
-  const p = jointAt(a,joint), q = jointAt(b,joint);
+  if(!!a.worldLandmarks?.length !== !!b.worldLandmarks?.length) return null;
+  const p = spatialJointAt(a,joint), q = spatialJointAt(b,joint);
   return p && q ? Math.hypot(q.x-p.x,q.y-p.y,q.z-p.z)/(b.timeSeconds-a.timeSeconds) : null;
 }

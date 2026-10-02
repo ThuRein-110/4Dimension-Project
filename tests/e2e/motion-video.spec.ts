@@ -2,6 +2,8 @@ import { test,expect } from '@playwright/test';
 
 test('private root video loads, plays, pauses, seeks and supports byte ranges', async ({ page,request }) => {
   test.setTimeout(120000);
+  const discovered = await request.get('/api/motion/demo/info');
+  test.skip(!discovered.ok(),'Real integration requires an ignored root video on this PC.');
   await page.goto('/'); await page.getByRole('link',{name:'4D Motion Lab',exact:true}).click();
   await expect(page.getByRole('heading',{name:'4D Motion Lab',exact:true})).toBeVisible();
   await expect(page.locator('video')).toHaveJSProperty('readyState',4,{timeout:60000});
@@ -15,4 +17,6 @@ test('private root video loads, plays, pauses, seeks and supports byte ranges', 
   expect(range.status()).toBe(206); expect((await range.body()).byteLength).toBe(100);
   expect((await request.get('/api/motion/demo/stream?id=../../package.json')).status()).toBe(400);
   expect((await request.get('/api/motion/demo/info',{headers:{Origin:'https://foreign.example'}})).status()).toBe(403);
+  const blocked=await request.get(`/${encodeURIComponent(metadata.name)}`);
+  expect([403,404]).toContain(blocked.status());
 });
