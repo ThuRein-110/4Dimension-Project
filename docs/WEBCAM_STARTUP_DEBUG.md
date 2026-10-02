@@ -1,5 +1,9 @@
 # Windows Webcam Startup Audit
 
+Historical first-fix audit. The current native AbortError investigation, device
+picker, isolated raw test, stricter fallback, acquisition watchdog and real HP
+hardware results are in [WEBCAM_NATIVE_TIMEOUT](WEBCAM_NATIVE_TIMEOUT.md).
+
 2026-10-02. Scope: normal Windows webcam startup only. Cube Lab detector,
 tracking, pose filtering and recording code are unchanged.
 

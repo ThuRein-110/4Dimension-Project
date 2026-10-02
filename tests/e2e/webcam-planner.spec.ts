@@ -83,7 +83,7 @@ test('webcam permission failure is recoverable without starting phone pairing', 
     };
   });
   await page.goto('/'); await page.getByRole('button', { name: 'Start webcam', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Webcam permission denied');
+  await expect(page.getByRole('alert')).toContainText('Camera permission was denied');
   await expect(page.getByRole('button', { name: 'Start webcam', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Start webcam', exact: true }).click();
   await expect(page.getByText('Webcam active', { exact: true })).toBeVisible();

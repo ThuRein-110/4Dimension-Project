@@ -212,3 +212,27 @@ reports `NotReadableError: Device in use`, before stream acquisition; physical
 startup is not accepted until the camera is available and the hardware checks pass.
 See [WEBCAM_STARTUP_DEBUG](WEBCAM_STARTUP_DEBUG.md) and run `npm run test:webcam`
 with other camera captures stopped. No competing applications were terminated.
+
+## Native Webcam Timeout and Hardware Selection
+
+2026-10-02: traced the owner's `AbortError: Timeout starting video source` to
+Chromium's native START_TIMEOUT mapping, not an application AbortController.
+Added a physical/virtual camera picker and isolated `/webcam-test` page with raw
+default and explicit-device capture. Native/application errors and pending states
+are separate. Native AbortError no longer auto-retries; only OverconstrainedError
+allows one clean sequential fallback. Document-wide startup serialization also
+covers replacement React controller instances. A labeled 15-second application
+watchdog retains the lock until native settlement and disposes late streams.
+
+Physical probes: browser default and Integrated Camera fail with Device in use;
+HP Wide Vision succeeds in the raw page and normal app at 1280x720 with positive
+FPS. Its Stop/start/Restart/sample/local lifecycle passed five normal acquisitions,
+max concurrency 1, with all previous tracks stopped. The HP image is very dark;
+clear room visibility/lens/lighting and default-device availability remain open.
+No other applications were closed. The owner's exact native START_TIMEOUT
+driver/service cause is not established; device selection is now inspectable.
+
+Lint, typecheck, 52 unit tests, 41 browser tests, build and compiled-production raw
+startup/stop/isolation smoke pass. Cube/marker/calibration/furniture/layout/timeline
+logic is unchanged. Details and the real-hardware command are in
+[WEBCAM_NATIVE_TIMEOUT](WEBCAM_NATIVE_TIMEOUT.md).

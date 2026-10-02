@@ -233,6 +233,19 @@ dd { margin: 0; text-align: right; color: #cdd2d9; }
 .webcam-diagnostics dl { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
 .webcam-diagnostics dt { margin-top: 8px; color: var(--muted); }
 .webcam-diagnostics dd { margin: 0; overflow-wrap: anywhere; }
+.webcam-device-select { display: flex; align-items: end; gap: 8px; margin: 16px 0; }
+.webcam-device-select label { display: grid; gap: 6px; min-width: 0; flex: 1; font-size: 12px; }
+.webcam-device-select select { width: 100%; min-width: 0; height: 34px; padding: 4px; background: #202328; color: inherit; border: 1px solid var(--border); border-radius: 4px; }
+.webcam-device-select button { flex: 0 0 34px; width: 34px; height: 34px; }
+.webcam-native-message { display: block; margin-top: 5px; overflow-wrap: anywhere; }
+.raw-webcam-app { max-width: 1000px; margin: 0 auto; padding: 20px; }
+.raw-webcam-app header a { display: inline-flex; align-items: center; gap: 8px; color: inherit; }
+.raw-webcam-app h1 { font-size: 24px; margin: 20px 0; }
+.raw-webcam-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 16px; }
+.raw-webcam-controls .webcam-device-select { flex: 1 1 230px; margin: 0; }
+.raw-webcam-controls > button { min-height: 34px; display: flex; align-items: center; gap: 6px; }
+.raw-webcam-app video { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: contain; background: #000; margin-top: 16px; }
+.raw-webcam-app [role=alert] { color: #f3b3b3; overflow-wrap: anywhere; margin-top: 16px; }
 .stop-button { width: 100%; margin-top: 25px; background: transparent; font-size: 11px; color: #a6afb9; }
 .app-footer { height: 35px; display: flex; justify-content: space-between; align-items: center; padding: 0 22px; border-top: 1px solid var(--border); color: #787f89; font-size: 10px; gap: 12px; }
 .footer-divider { display: inline-block; width: 1px; height: 10px; background: #383e45; margin: 0 12px; vertical-align: middle; }

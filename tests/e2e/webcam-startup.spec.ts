@@ -23,11 +23,11 @@ async function audit(page: import('@playwright/test').Page, delay = 0) {
 test('one webcam stream survives start, stop, restart and sample/local/phone switches', async ({ page }) => {
   await audit(page, 350); await page.goto('/');
   await expect(page.getByRole('button', { name: 'Start webcam', exact: true })).toBeVisible();
-  // Fire both entry points in one task, before React can repaint disabled controls.
+  // A second click cannot reenter startup, even in the same browser task.
   await page.evaluate(() => {
     const buttons = [...document.querySelectorAll('button')];
-    buttons.find(button => button.textContent === 'Start webcam')!.click();
-    buttons.find(button => button.textContent === 'Enable webcam')!.click();
+    const start = buttons.find(button => button.textContent === 'Start webcam')!;
+    start.click(); start.click();
   });
   await expect(page.getByRole('button', { name: 'Starting webcam...', exact: true }).first()).toBeDisabled();
   await expect(page.getByText('Webcam active', { exact: true })).toBeVisible();
@@ -71,23 +71,27 @@ test('one webcam stream survives start, stop, restart and sample/local/phone swi
 });
 
 for (const [name, message, visible] of [
-  ['NotAllowedError', 'Permission denied', 'Webcam permission denied'],
+  ['NotAllowedError', 'Permission denied', 'Camera permission was denied'],
   ['NotFoundError', 'Requested device not found', 'No webcam was found'],
-  ['NotReadableError', 'Device in use', 'Webcam is currently being used by another application'],
+  ['NotReadableError', 'Device in use', 'Windows could not open the webcam'],
   ['OverconstrainedError', 'Bad constraint', 'The webcam cannot provide the requested settings'],
   ['AbortError', 'Timeout starting video source', 'The browser could not start the webcam'],
   ['SecurityError', 'Camera disabled by policy', 'Camera access is blocked'],
-  ['Error', 'Could not start video source', 'Webcam is currently being used by another application'],
+  ['Error', 'Could not start video source', 'Windows could not open the webcam'],
 ]) {
   test(`preserves ${name}: ${message} and gives actionable guidance`, async ({ page }) => {
     const logged: string[] = []; page.on('console', entry => { if (entry.type() === 'error') logged.push(entry.text()); });
     await page.addInitScript(({ name, message }) => {
-      navigator.mediaDevices.getUserMedia = async () => { throw new DOMException(message, name); };
+      window.webcamAudit = { calls: 0, concurrent: 0, maxConcurrent: 0, activeAtRequest: [], tracks: [], constraints: [] };
+      navigator.mediaDevices.getUserMedia = async () => { window.webcamAudit.calls++; throw new DOMException(message, name); };
     }, { name, message });
     await page.goto('/'); await page.getByRole('button', { name: 'Start webcam', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText(visible);
     await page.getByText('Camera diagnostics', { exact: true }).click();
     await expect(page.getByTestId('webcam-last-error')).toHaveText(`${name}: ${message}`);
+    await expect(page.getByTestId('webcam-native-error')).toHaveText(`${name}: ${message}`);
+    await expect(page.getByTestId('webcam-application-error')).toHaveText('None');
+    expect(await page.evaluate(() => window.webcamAudit.calls)).toBe(name === 'OverconstrainedError' ? 2 : 1);
     await expect(page.getByRole('button', { name: 'Start webcam', exact: true })).toBeEnabled();
     expect(logged.some(line => line.includes(name) && line.includes(message))).toBe(true);
     expect(await page.locator('video').evaluate(node => (node as HTMLVideoElement).srcObject)).toBe(null);

@@ -20,7 +20,16 @@ try {
     await new Promise(resolve => setTimeout(resolve, 250));
   }
   assert(available, `Production startup timed out: ${output}`);
-  browser = await chromium.launch();
+  browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
+  const raw = await browser.newPage({ viewport: { width: 1280, height: 900 }, permissions: ['camera'] });
+  await raw.goto('http://localhost:5174/webcam-test');
+  await raw.getByRole('button', { name: 'Test Raw Webcam', exact: true }).click();
+  await raw.waitForFunction(() => document.querySelector('[data-testid="raw-camera-result"]')?.textContent?.includes('RAW CAMERA SUCCESS'));
+  await raw.waitForFunction(() => { const video = document.querySelector('video')!; return video.videoWidth > 0 && video.videoHeight > 0 && video.getVideoPlaybackQuality().totalVideoFrames > 0; });
+  assert(!(await raw.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('DesktopApp-')))), 'Raw test must not load the desktop editor');
+  await raw.getByRole('button', { name: 'Stop webcam', exact: true }).click();
+  assert(await raw.locator('video').evaluate(node => (node as HTMLVideoElement).srcObject === null), 'Raw test must detach its stopped camera');
+  await raw.close();
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
@@ -87,7 +96,7 @@ try {
   await phone.getByRole('heading', { name: '4D LiveSpace Camera', exact: true }).waitFor();
   assert(!(await phone.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('DesktopApp-')))), 'Phone must not download the desktop editor');
   assert.deepEqual(errors, []);
-  console.log('Production smoke passed: compiled clients, QR/assets, room and cube 3D, JSON save, real ID 100/101 detection, cube record/scrub/export/import/offline replay/keyframes, marker modal/self-test, phone bundle isolation.');
+  console.log('Production smoke passed: isolated raw webcam startup/stop, compiled clients, QR/assets, room and cube 3D, JSON save, real ID 100/101 detection, cube record/scrub/export/import/offline replay/keyframes, marker modal/self-test, phone bundle isolation.');
 } finally {
   await browser?.close();
   if (savedId) await fetch(`http://localhost:5174/api/projects/${savedId}`, { method: 'DELETE', headers: { 'x-livespace-client': 'desktop' } }).catch(() => undefined);

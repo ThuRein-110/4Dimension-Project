@@ -16,6 +16,7 @@ import { ProjectControls } from './planner/ProjectControls.js';
 import { captureView } from './planner/export.js';
 import { WebcamController } from './webcam/WebcamController.js';
 import { WebcamDiagnostics } from './webcam/WebcamDiagnostics.js';
+import { WebcamDeviceSelect } from './webcam/WebcamDeviceSelect.js';
 
 type Source = 'phone' | 'webcam' | 'file' | 'demo';
 const names: Record<LinkState, string> = { connecting: 'Connecting', waiting: 'Waiting for iPhone', negotiating: 'Connecting video', live: 'iPhone Connected', reconnecting: 'Reconnecting', closed: 'Disconnected' };
@@ -57,7 +58,7 @@ export function DesktopApp() {
   const phoneLive = source === 'phone' && linkState === 'live' && ready;
   const webcamLive = source === 'webcam' && !!local?.active && ready;
   const live = phoneLive || webcamLive;
-  const cameraStatus = source === 'webcam' ? webcamLive ? 'Webcam live' : webcamStarting ? 'Starting webcam' : 'Webcam stopped' : source === 'phone' ? phoneLive ? 'Camera live' : names[linkState] : 'Local source';
+  const cameraStatus = source === 'webcam' ? webcamLive ? 'Webcam live' : webcamState.lifecycle === 'ERROR' ? 'Webcam error' : webcamState.lifecycle === 'STOPPING' ? 'Stopping webcam' : webcamStarting ? 'Starting webcam' : 'Webcam stopped' : source === 'phone' ? phoneLive ? 'Camera live' : names[linkState] : 'Local source';
 
   async function pair() {
     setPairing(true); setError('');
@@ -88,7 +89,10 @@ export function DesktopApp() {
       setWebcamState(state);
       if (sourceRef.current === 'webcam') { setReady(state.phase === 'live'); setError(state.error); }
     });
-    return () => { unsubscribe(); webcamController.stop(); };
+    void webcamController.refreshDevices();
+    const devicesChanged = () => void webcamController.refreshDevices();
+    navigator.mediaDevices?.addEventListener('devicechange', devicesChanged);
+    return () => { unsubscribe(); webcamController.stop(); navigator.mediaDevices?.removeEventListener('devicechange', devicesChanged); };
   }, [webcamController]);
   useEffect(() => () => { link.current?.close(); }, []);
   useEffect(() => {
@@ -199,7 +203,7 @@ export function DesktopApp() {
           {showImage && <img ref={image} className="room-image" src={source === 'demo' ? '/assets/demo/room.jpg' : mediaUrl} alt="Room reference" style={{ objectFit: fit }} onLoad={() => setReady(true)} onError={() => setError('Image could not be loaded.')} />}
           {!hasMedia && (planner.mode !== 'cube' || !cubeReplay) && <div className="viewport-empty"><div className="camera-symbol"><Video size={36} strokeWidth={1.5} /></div><h1>{source === 'webcam' ? 'Windows webcam' : 'Connect your room'}</h1><p>{source === 'webcam' ? webcamStarting ? 'Waiting for webcam permission.' : 'Camera stopped' : 'Scan the QR code with your iPhone to start the live camera.'}</p>{source === 'webcam' ? <button className="primary" disabled={webcamStarting} onClick={() => void webcam()}><Camera size={17} />{webcamStarting ? 'Starting webcam...' : 'Start webcam'}</button> : <button className="primary" onClick={() => setSetup(true)}><Smartphone size={17} />Connect iPhone</button>}<button className="quiet" onClick={() => chooseSource('demo')}>Open sample room</button></div>}
           {hasMedia && <div className="viewport-badges"><span className={live ? 'live-badge' : 'media-badge'}>{live ? 'LIVE' : source === 'phone' ? 'CONNECTING' : source === 'webcam' ? 'WEBCAM' : 'REFERENCE'}</span><span>{showImage ? 'Still image' : `${stats.width || '--'} x ${stats.height || '--'}`}</span></div>}
-          {error && <div className="viewport-error" role="alert"><Info size={17} /><span>{error}</span><button title="Dismiss" aria-label="Dismiss error" onClick={() => setError('')}><X size={15} /></button></div>}
+          {error && <div className="viewport-error" role="alert"><Info size={17} /><span>{error}{source === 'webcam' && error === webcamState.error && webcamState.lastNativeError && <small className="webcam-native-message">{webcamState.lastNativeError}</small>}</span><button title="Dismiss" aria-label="Dismiss error" onClick={() => setError('')}><X size={15} /></button></div>}
           <span className="viewport-watermark">4D LiveSpace</span>
           {planner.mode === 'cube' ? <CubeOverlay mediaActive={hasMedia && ready} media={showImage ? image.current : video} mediaWidth={showImage ? image.current?.naturalWidth ?? 0 : stats.width} mediaHeight={showImage ? image.current?.naturalHeight ?? 0 : stats.height} fit={fit} source={source === 'webcam' ? 'Windows webcam' : source} /> : <ThreeOverlay media={showImage ? image.current : video} mediaWidth={showImage ? image.current?.naturalWidth ?? 0 : stats.width} mediaHeight={showImage ? image.current?.naturalHeight ?? 0 : stats.height} fit={fit} />}
         </div>
@@ -219,9 +223,11 @@ export function DesktopApp() {
         <button className="stop-button" disabled={!local && linkState === 'closed'} onClick={() => { link.current?.close(); setRemote(null); webcamController.stop(); }}><Square size={14} />Disconnect</button>
       </aside>
       {planner.mode === 'camera' && source !== 'phone' && <aside className="connection-panel webcam-panel"><div className="panel-title">Windows webcam<Camera size={16} /></div><div className="pairing-heading"><h2>Fixed-camera workspace</h2></div><div className="stream-details"><div className="panel-title">Stream details</div><dl><dt>Camera</dt><dd>{source === 'webcam' ? webcamLive ? 'Windows webcam' : 'Stopped' : 'Local media'}</dd><dt>Resolution</dt><dd>{stats.width ? `${stats.width} x ${stats.height}` : '--'}</dd><dt>Frame rate</dt><dd>{stats.fps} FPS</dd><dt>Calibration</dt><dd>{planner.calibrationState === 'NotCalibrated' ? 'Not calibrated' : planner.calibrationState}</dd></dl></div>{source === 'webcam' && <>
-        <button className="setup-button" disabled={webcamStarting && !local} onClick={() => { if (local) webcamController.stop(); else void webcam(); }}><Camera size={16} />{local ? 'Stop webcam' : webcamStarting ? 'Starting webcam...' : 'Enable webcam'}</button>
+        <WebcamDeviceSelect controller={webcamController} state={webcamState} />
+        <button className="setup-button" onClick={() => { if (local || webcamStarting) webcamController.stop(); else void webcam(); }}><Camera size={16} />{local || webcamStarting ? 'Stop webcam' : 'Enable webcam'}</button>
         <button className="setup-button" disabled={webcamStarting} onClick={() => void webcam()}><RefreshCw size={16} />Restart webcam</button>
         <WebcamDiagnostics state={webcamState} video={video} />
+        <button className="setup-button" disabled={webcamStarting} onClick={() => { webcamController.stop(); window.location.assign('/webcam-test'); }}><Camera size={16} />Test Raw Webcam</button>
       </>}<button className="setup-button" onClick={() => workspace.recalibrate()}><RefreshCw size={16} />Recalibrate</button></aside>}
       {planner.mode === 'cube' ? <CubeRightPanel /> : planner.mode !== 'camera' && <PlannerRightPanel />}
     </div>

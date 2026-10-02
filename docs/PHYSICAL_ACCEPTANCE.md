@@ -7,8 +7,9 @@ not gate the webcam version.
 
 ## Optional Cube Lab Experiment
 
-The owner reports the Windows webcam is already working. The physical cube
-experiment has not yet been tested by the owner. Automated marker-pixel tests
+The owner subsequently reported webcam acquisition failures. The latest
+device-specific startup evidence is below. The physical cube experiment has
+not yet been tested by the owner. Automated marker-pixel tests
 must not be treated as evidence of real lens accuracy or physical alignment.
 
 | Cube Lab Hardware Check | Result |
@@ -35,9 +36,11 @@ iPhone/marker records below remain secondary; they do not gate webcam developmen
 | Primary Webcam Check | Result |
 | --- | --- |
 | Windows/browser/webcam model and fixed mounting | Pending |
-| Permission, live frames, resolution and FPS | Pending |
-| Webcam startup hardware probe (2026-10-02), without fake camera | NotReadableError: Device in use; no live frame verified |
-| Webcam Stop/start/Restart and sample/local switching on hardware | Pending camera availability; test-camera browser checks pass |
+| Permission, live frames, resolution and FPS | HP Wide Vision: real 1280x720 frames, positive measured FPS; permission automated; owner prompt/scene visibility pending |
+| Raw browser-default hardware probe (2026-10-02), without fake camera | NotReadableError: Device in use; Integrated Camera also fails explicitly |
+| Raw selected HP Wide Vision hardware probe | RAW CAMERA SUCCESS, 640x480, positive measured FPS |
+| HP Webcam Stop/start/Restart and sample/local switching on hardware | Passed five sequential normal acquisitions; max concurrency 1; all tracks stopped |
+| HP lens/lighting/clear scene visibility | Very dark sampled frames; owner check pending |
 | Manual A/B/C and measured A-B | Pending |
 | Grid/alignment and approximate measurement error | Pending |
 | Place/move/rotate/scale without phone or marker | Pending |
@@ -45,8 +48,10 @@ iPhone/marker records below remain secondary; they do not gate webcam developmen
 | Compare/composite PNG/save/reopen | Pending |
 | Move webcam, Recalibrate, retain all room content | Pending |
 
-Status: **pending owner hardware tests**. Automated browser tests cannot fill in
-this record.
+Status: **HP startup/cleanup hardware path verified; complete owner room tests
+remain pending**. Default-device failure and dark HP visibility are not waived.
+See [WEBCAM_NATIVE_TIMEOUT](WEBCAM_NATIVE_TIMEOUT.md). Automated test-camera
+browser tests cannot fill in physical room/accuracy acceptance.
 
 | Field | Result |
 | --- | --- |

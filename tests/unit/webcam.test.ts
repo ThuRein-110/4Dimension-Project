@@ -40,14 +40,18 @@ describe('webcam lifecycle', () => {
     expect(vi.getTimerCount()).toBe(0); await vi.advanceTimersByTimeAsync(30000); expect(camera.snapshot.phase).toBe('live');
     camera.stop(); expect(input.track.stop).toHaveBeenCalledTimes(1); expect(video.srcObject).toBe(null);
   });
-  it('does not time out an unanswered permission request or open a second camera after cancellation', async () => {
+  it('labels the acquisition watchdog as application-only and retains the native request lock', async () => {
     const input = stream(); let resolve!: (stream: MediaStream) => void;
     const capture = vi.fn(() => new Promise<MediaStream>(done => { resolve = done; }));
     vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: capture } });
     const pending = start(camera, video); await flush(); await vi.advanceTimersByTimeAsync(30000);
-    expect(camera.snapshot.phase).toBe('requesting'); expect(camera.snapshot.error).toBe('');
-    camera.stop(); expect(start(camera, video)).toBe(pending); expect(capture).toHaveBeenCalledTimes(1);
-    resolve(input.media); await pending; expect(input.track.stop).toHaveBeenCalledTimes(1); expect(video.srcObject).toBe(null);
+    const timedOut = camera.snapshot;
+    const locked = start(camera, video); const calls = capture.mock.calls.length;
+    camera.stop(); resolve(input.media); await pending;
+    expect(timedOut.phase).toBe('error'); expect(timedOut.lifecycle).toBe('ERROR'); expect(timedOut.lastApplicationError).toContain('Webcam startup timed out');
+    expect(timedOut.lastNativeError).toBe(''); expect(timedOut.nativePending).toBe(true);
+    expect(locked).toBe(pending); expect(calls).toBe(1);
+    expect(input.track.stop).toHaveBeenCalledTimes(1); expect(video.srcObject).toBe(null);
     expect(camera.snapshot.phase).toBe('stopped'); expect(camera.busy).toBe(false);
   });
   it('times out only after acquisition when metadata never arrives, and releases the camera', async () => {
@@ -95,15 +99,64 @@ describe('webcam lifecycle', () => {
     const capture = vi.fn(async () => { throw new DOMException('Device in use', 'NotReadableError'); });
     vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: capture } });
     await start(camera, video); expect(capture).toHaveBeenCalledTimes(1);
-    expect(camera.snapshot.lastError).toBe('NotReadableError: Device in use'); expect(camera.snapshot.error).toContain('another application');
+    expect(camera.snapshot.lastError).toBe('NotReadableError: Device in use'); expect(camera.snapshot.error).toContain('Another application');
   });
   it('detects an insecure/unavailable media API before requesting', async () => {
     vi.stubGlobal('navigator', {}); await start(camera, video);
-    expect(camera.snapshot.lastError).toContain('SecurityError'); expect(camera.snapshot.error).toContain('localhost or HTTPS');
+    expect(camera.snapshot.lastApplicationError).toContain('localhost or HTTPS'); expect(camera.snapshot.lastNativeError).toBe('');
   });
   it('keeps browser AbortError distinct from app metadata timeouts', () => {
     const failure = webcamError(new DOMException('Timeout starting video source', 'AbortError'));
     expect(failure.name).toBe('AbortError'); expect(failure.message).toBe('Timeout starting video source');
     expect(failure.userMessage).toContain('browser could not start');
+  });
+  it('never retries a native AbortError and preserves its exact name/message', async () => {
+    const capture = vi.fn(async () => { throw new DOMException('Timeout starting video source', 'AbortError'); });
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: capture } });
+    await start(camera, video);
+    expect(capture).toHaveBeenCalledTimes(1); expect(camera.snapshot.lastNativeError).toBe('AbortError: Timeout starting video source');
+    expect(camera.snapshot.lastApplicationError).toBe(''); expect(camera.snapshot.nativePending).toBe(false); expect(camera.snapshot.lifecycle).toBe('ERROR');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('retains both the watchdog error and a late native rejection without retrying', async () => {
+    let reject!: (error: Error) => void;
+    const capture = vi.fn(() => new Promise<MediaStream>((_, fail) => { reject = fail; }));
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: capture } });
+    const pending = start(camera, video); await flush(); await vi.advanceTimersByTimeAsync(15000);
+    reject(new DOMException('Timeout starting video source', 'AbortError')); await pending;
+    expect(camera.snapshot.lastApplicationError).toContain('getUserMedia: Webcam startup timed out');
+    expect(camera.snapshot.lastNativeError).toBe('AbortError: Timeout starting video source'); expect(capture).toHaveBeenCalledTimes(1);
+    expect(camera.busy).toBe(false); expect(vi.getTimerCount()).toBe(0);
+  });
+  it('serializes native acquisition across unmounted/remounted controller instances', async () => {
+    const oldInput = stream(); const newInput = stream(); const next = new WebcamController(); const nextVideo = new TestVideo();
+    let resolve!: (stream: MediaStream) => void;
+    const capture = vi.fn().mockImplementationOnce(() => new Promise<MediaStream>(done => { resolve = done; })).mockResolvedValueOnce(newInput.media);
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: capture } });
+    const old = start(camera, video); await flush(); camera.stop();
+    const replacement = start(next, nextVideo); await flush(); const callsBeforeSettlement = capture.mock.calls.length;
+    resolve(oldInput.media); await old; await flush(); nextVideo.metadata(); await replacement;
+    next.stop();
+    expect(callsBeforeSettlement).toBe(1); expect(capture).toHaveBeenCalledTimes(2);
+    expect(oldInput.track.stop).toHaveBeenCalledTimes(1); expect(newInput.track.stop).toHaveBeenCalledTimes(1); expect(video.srcObject).toBe(null);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('supports idempotent stop and three start/stop cycles without stale locks', async () => {
+    const inputs = [stream(), stream(), stream()]; let index = 0;
+    const capture = vi.fn(async () => inputs[index++].media);
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: capture } });
+    for (let i = 0; i < inputs.length; i++) {
+      const pending = start(camera, video); await flush(); video.metadata(); await pending;
+      expect(camera.snapshot.lifecycle).toBe('LIVE'); camera.stop(); camera.stop();
+      expect(camera.snapshot.lifecycle).toBe('STOPPED'); expect(camera.busy).toBe(false); expect(inputs[i].track.stop).toHaveBeenCalledTimes(1);
+    }
+    expect(capture).toHaveBeenCalledTimes(3); expect(vi.getTimerCount()).toBe(0);
+  });
+  it('raw default acquisition ignores saved IDs and uses only video: true, audio: false', async () => {
+    const input = stream(); const capture = vi.fn(async () => input.media);
+    vi.stubGlobal('localStorage', { getItem: () => 'old-device', setItem: vi.fn() });
+    vi.stubGlobal('navigator', { mediaDevices: { getUserMedia: capture } });
+    const pending = camera.start(video as unknown as HTMLVideoElement, { raw: true }); await flush(); video.metadata(); await pending;
+    expect(capture).toHaveBeenCalledWith({ video: true, audio: false }); expect(camera.snapshot.lifecycle).toBe('LIVE');
   });
 });
