@@ -21,7 +21,7 @@ export function motionRoutes(service = new VideoPreparationService()) {
   router.get('/demo/stream', async (req, res) => {
     try {
       if (typeof req.query.id !== 'string' || !/^[a-f0-9]{64}$/.test(req.query.id)) { res.sendStatus(400); return; }
-      res.sendFile(await service.stream(req.query.id));
+      res.sendFile(await service.stream(req.query.id), { dotfiles: 'allow' });
     } catch { res.status(404).json({ error: 'Prepared video unavailable. Reload Motion Lab.' }); }
   });
   router.use('/wasm', express.static(resolve('node_modules/@mediapipe/tasks-vision/wasm'), { fallthrough: false }));
@@ -40,7 +40,7 @@ export function motionRoutes(service = new VideoPreparationService()) {
         })().finally(() => { downloading = undefined; });
         await downloading;
       }
-      res.sendFile(model);
+      res.sendFile(model, { dotfiles: 'allow' });
     } catch { res.status(503).json({ error: 'Pose model unavailable. Connect once to download the public model, then retry. No video is uploaded.' }); }
   });
   return router;
