@@ -1,7 +1,7 @@
 import { Matrix4, Quaternion, Vector3 } from 'three';
 import type { Calibration } from '../../shared/src/project.js';
 
-export interface MarkerResult { found: boolean; rotation?: number[][]; translation?: number[]; corners?: { x: number; y: number }[]; error?: number; message?: string }
+export interface MarkerResult { found: boolean; type?: 'ready' | 'fatal' | 'result'; detected?: boolean; poseValid?: boolean; markers?: { id: number; corners: { x: number; y: number }[] }[]; detectorMs?: number; poseMessage?: string; rotation?: number[][]; translation?: number[]; corners?: { x: number; y: number }[]; error?: number; message?: string }
 export function markerCameraPose(rotation: number[][], translation: number[]) {
   // POSIT camera has forward +Z. Flip camera Z, then lay marker XY on world XZ.
   const r = rotation;
@@ -27,6 +27,7 @@ export class MarkerTracker {
     this.worker = new Worker('/assets/marker-worker.js');
     this.worker.onerror = () => { this.pending = false; callback({ found: false, message: 'Marker worker unavailable. Use manual calibration.' }); };
     this.worker.onmessage = event => {
+      if (event.data.type === 'ready') return;
       this.pending = false;
       const result = event.data as MarkerResult;
       if (result.found && result.rotation && result.translation) {

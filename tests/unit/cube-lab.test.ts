@@ -3,8 +3,10 @@ import { Quaternion, Vector3 } from 'three';
 import { CubeRecordingController, interpolatePose, parseRecording, type CubePose, type CubeRecording } from '../../packages/cube-lab/src/recording.js';
 import { cubePose, CubePoseFilter, verticalFov } from '../../packages/cube-lab/src/pose.js';
 import { CubeLabStore } from '../../apps/desktop-web/src/cube-lab/store.js';
+import type { CubeTrackingResult } from '../../packages/cube-lab/src/CubeTracker.js';
 
 const pose: CubePose = { position: { x: .1, y: .2, z: .8 }, rotation: { x: 0, y: 0, z: 0, w: 1 } };
+const frame: CubeTrackingResult = { raw: pose, filtered: pose, width: 640, height: 360, fps: 15, engine: 'ready', frameProcessed: true, frameStatus: 'receiving', detected: true, markers: [{ id: 101, corners: [] }], poseStatus: 'available' };
 const metadata: Omit<CubeRecording, 'samples' | 'keyframes' | 'durationMs'> = { schemaVersion: 1, recordingId: crypto.randomUUID(), createdAt: new Date().toISOString(), name: 'Test', coordinates: 'camera-relative: X right, Y up, Z depth; quaternion in Three.js camera basis', camera: { width: 1280, height: 720, verticalFov: 60, calibration: 'approximate', source: 'Windows webcam' }, markerId: 101, markerSizeMm: 40, cubeSizeMm: 57, sampleRate: 10 };
 describe('cube lab', () => {
   it('converts marker-face pose to cube center, preserving a proper rotation basis', () => {
@@ -57,7 +59,7 @@ describe('cube lab', () => {
     const store = new CubeLabStore();
     store.load({ ...metadata, durationMs: 1000, samples: [{ ...pose, timestampMs: 0 }, { ...pose, position: { ...pose.position, x: .3 }, timestampMs: 1000 }], keyframes: [] });
     store.seek(250); expect(store.pose()!.position.x).toBeCloseTo(.15);
-    store.result({ raw: { ...pose, position: { ...pose.position, x: 5 } }, filtered: { ...pose, position: { ...pose.position, x: 5 } }, width: 640, height: 360, fps: 15 });
+    store.set({ enabled: true }); store.result({ ...frame, raw: { ...pose, position: { ...pose.position, x: 5 } }, filtered: { ...pose, position: { ...pose.position, x: 5 } } });
     expect(store.pose()!.position.x).toBeCloseTo(.15); store.addKeyframe('Left'); expect(store.get().recording!.keyframes[0].timestampMs).toBe(250);
     store.step(1); expect(store.get().time).toBe(1000); store.step(-1); expect(store.get().time).toBe(0);
     store.set({ speed: 2, playing: true, loop: true }); store.tick(100); expect(store.get().time).toBe(200); store.tick(700); expect(store.get().time).toBe(400);
@@ -66,10 +68,26 @@ describe('cube lab', () => {
   });
   it('retains a lost pose only briefly, while detector failures never record samples', () => {
     const store = new CubeLabStore(); store.set({ enabled: true });
-    store.result({ raw: pose, filtered: pose, width: 640, height: 360, fps: 15 }); const found = store.get().lastFound;
-    expect(store.get().tracking).toBe('DETECTED'); store.result({ raw: pose, filtered: pose, width: 640, height: 360, fps: 15 }); expect(store.get().tracking).toBe('TRACKING');
+    store.result(frame); const found = store.get().lastFound;
+    expect(store.get().tracking).toBe('DETECTED'); store.result(frame); expect(store.get().tracking).toBe('DETECTED'); store.result(frame); expect(store.get().tracking).toBe('TRACKING');
     store.start(); const count = store.get().recording!.samples.length;
-    store.result({ raw: null, filtered: null, width: 640, height: 360, fps: 15 }); expect(store.get().tracking).toBe('LOST'); expect(store.get().recording!.samples.length).toBe(count);
+    for (let i = 0; i < 5; i++) store.result({ ...frame, raw: null, filtered: null, detected: false, markers: [], poseStatus: 'none' }); expect(store.get().tracking).toBe('LOST'); expect(store.get().recording!.samples.length).toBe(count);
     expect(store.pose(found + 500)).not.toBeNull(); expect(store.pose(found + 1500)).toBeNull(); store.suspend(); expect(store.get().mode).toBe('PLAYBACK'); expect(store.get().enabled).toBe(false);
+  });
+  it('separates decoded markers from invalid pose and engine errors', () => {
+    const store = new CubeLabStore(); store.set({ enabled: true });
+    const detectedOnly: CubeTrackingResult = { ...frame, raw: null, filtered: null, poseStatus: 'unavailable', poseMessage: 'No valid focal length' };
+    store.result(detectedOnly); expect(store.get().tracking).toBe('DETECTED'); expect(store.pose()).toBeNull();
+    store.result(detectedOnly); store.result(detectedOnly); expect(store.get().tracking).toBe('TRACKING'); store.start(); expect(store.get().recording).toBeNull();
+    expect(store.get().framesProcessed).toBe(3); store.result({ ...frame, engine: 'error', message: 'Worker load failed', frameProcessed: false });
+    expect(store.get().tracking).toBe('ERROR'); expect(store.get().enabled).toBe(false); expect(store.get().message).toBe('Worker load failed');
+    store.toggleTracking(); expect(store.get().engine).toBe('loading'); expect(store.get().tracking).toBe('NOT_FOUND');
+  });
+  it('reports all decoded IDs, expires long loss, and ignores results after Stop tracking', () => {
+    const store = new CubeLabStore(); store.toggleTracking();
+    store.result({ ...frame, detected: false, raw: null, filtered: null, markers: [{ id: 100, corners: [] }], poseStatus: 'none' });
+    expect(store.get().tracking).toBe('NOT_FOUND'); expect(store.get().debugResult!.markers[0].id).toBe(100);
+    store.result(frame); store.tick(store.get().lastDetected + 6000); expect(store.get().tracking).toBe('NOT_FOUND'); expect(store.pose(store.get().lastFound + 6000)).toBeNull();
+    store.toggleTracking(); const count = store.get().framesProcessed; store.result(frame); expect(store.get().framesProcessed).toBe(count); expect(store.get().filtered).toBeNull();
   });
 });

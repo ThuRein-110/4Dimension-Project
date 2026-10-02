@@ -6,6 +6,18 @@
 .cube-panel dl { font-size: 11px; }
 .cube-panel dd { overflow-wrap: anywhere; }
 .cube-panel .cube-pose dd { color: #b9e768; font-variant-numeric: tabular-nums; }
+.cube-expected { font-size: 11px; color: #aeb7c2; }
+.cube-vision-status { font-size: 10px; color: #969ba4; margin: 12px 0; }
+.cube-pose-warning { color: #edac6b; font-size: 11px; line-height: 1.6; overflow-wrap: anywhere; }
+.cube-self-test { font-size: 11px; line-height: 1.6; color: #63dbe9; overflow-wrap: anywhere; }
+.cube-marker-dialog { max-height: calc(100dvh - 32px); overflow-y: auto; }
+.cube-marker-dialog h2 { font-size: 18px; }
+.cube-marker-dialog > img { display: block; width: 240px; max-width: 100%; height: auto; aspect-ratio: 1; margin: 0 auto; image-rendering: pixelated; }
+.cube-marker-dialog dl { font-size: 11px; }
+.cube-marker-dialog dd { overflow-wrap: anywhere; }
+.cube-link-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border: 1px solid #363a41; border-radius: 5px; font-size: 11px; text-decoration: none; flex: 1; }
+.cube-marker-dialog ol, .cube-troubleshooting ul { padding-left: 20px; font-size: 11px; color: #aeb7c2; line-height: 1.7; }
+.cube-tracking-controls .cube-info > button { width: 100%; font-size: 11px; }
 .cube-panel h3 { font-size: 12px; margin: 0 0 12px; }
 .cube-button-row { display: flex; gap: 6px; margin-top: 10px; }
 .cube-button-row button { flex: 1; font-size: 11px; min-width: 0; }

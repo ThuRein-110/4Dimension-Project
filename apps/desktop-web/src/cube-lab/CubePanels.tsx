@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Circle, Download, Flag, Pause, Play, RefreshCw, Save, ScanLine, SkipBack, SkipForward, Square, Trash2, Upload } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Circle, Download, Flag, Pause, Play, RefreshCw, Save, SkipBack, SkipForward, Square, Trash2, Upload } from 'lucide-react';
 import { Euler, Quaternion } from 'three';
 import type { CubeRecording } from '../../../../packages/cube-lab/src/recording.js';
 import { cubeLab, useCubeLab } from './store.js';
@@ -8,6 +8,7 @@ import { downloadBlob } from '../planner/export.js';
 import { confirmAction } from '../planner/dialogs.js';
 import { workspace } from '../planner/store.js';
 import './cube-lab.css';
+import { CubeTrackingControls } from './CubeTrackingControls.js';
 
 async function replaceTake() { return !cubeLab.get().recording?.samples.length || await confirmAction('Replace this take?', 'Save or export the current recording before replacing it.'); }
 async function action(task: () => void | Promise<void>) { try { await task(); } catch (error) { cubeLab.set({ message: error instanceof Error ? error.message : String(error) }); } }
@@ -15,7 +16,7 @@ const seconds = (ms: number) => `${(ms / 1000).toFixed(2)} s`;
 export function CubeLeftPanel() {
   const s = useCubeLab(); const input = useRef<HTMLInputElement>(null); const [saved, setSaved] = useState<CubeRecording[]>([]); const [busy, setBusy] = useState(false);
   useEffect(() => { let active = true; void savedRecordings().then(values => { if (active) setSaved(values); }).catch(() => { if (active) cubeLab.set({ message: 'Local recording storage unavailable. JSON export is still available.' }); }); return () => { active = false; }; }, []);
-  const recording = s.mode === 'RECORDING'; const ready = s.enabled && !s.preview && (s.tracking === 'DETECTED' || s.tracking === 'TRACKING');
+  const recording = s.mode === 'RECORDING'; const ready = s.enabled && !s.preview && s.debugResult?.poseStatus === 'available' && (s.tracking === 'DETECTED' || s.tracking === 'TRACKING');
   return <aside className="furniture-panel cube-panel">
     <div className="panel-title">4D Cube Lab</div>
     <section className="property-section"><h3>Recording</h3><label className="text-field">Take name<input maxLength={80} value={s.name} onChange={e => cubeLab.set({ name: e.target.value })} /></label>
@@ -39,8 +40,8 @@ export function CubeRightPanel() {
   const locked = s.enabled || s.mode === 'RECORDING';
   return <aside className="properties-panel cube-panel">
     <div className="panel-title">Cube 01 / ID 101</div><div className={`tracking-state ${s.tracking === 'LOST' ? 'cube-lost' : ''}`} role="status" data-testid="cube-tracking">{s.tracking === 'LOST' ? 'TRACKING LOST' : s.tracking}</div>
+    <CubeTrackingControls />
     <section className="property-section"><h3>Approximate Pose</h3><dl className="cube-pose"><dt>X</dt><dd data-testid="cube-x">{number(pose?.position.x)} m</dd><dt>Y</dt><dd data-testid="cube-y">{number(pose?.position.y)} m</dd><dt>Z</dt><dd data-testid="cube-z">{number(pose?.position.z)} m</dd><dt>Distance</dt><dd>{number(pose ? Math.hypot(...Object.values(pose.position)) : undefined)} m</dd><dt>Pitch</dt><dd>{rotation ? (rotation.x * 180 / Math.PI).toFixed(1) : '--'} deg</dd><dt>Yaw</dt><dd>{rotation ? (rotation.y * 180 / Math.PI).toFixed(1) : '--'} deg</dd><dt>Roll</dt><dd>{rotation ? (rotation.z * 180 / Math.PI).toFixed(1) : '--'} deg</dd></dl>
-      <button disabled={s.mode === 'RECORDING'} onClick={() => cubeLab.toggleTracking()}><ScanLine size={15} />{s.enabled ? 'Stop tracking' : 'Start tracking'}</button>
       <button disabled={s.mode === 'RECORDING'} onClick={() => cubeLab.live()}><RefreshCw size={15} />Return to Live</button>
     </section>
     <section className="property-section"><h3>Camera Calibration</h3>
@@ -56,8 +57,7 @@ export function CubeRightPanel() {
       {(['cube', 'trajectory', 'axes', 'label'] as const).map(key => <label className="check-field" key={key}><input type="checkbox" checked={s[key]} onChange={e => cubeLab.set({ [key]: e.target.checked })} />{{ cube: 'Virtual Cube', trajectory: 'Trajectory', axes: 'Axes', label: 'Coordinate Label' }[key]}</label>)}
       <label className="check-field"><input type="checkbox" disabled={s.enabled || s.mode === 'RECORDING'} checked={s.preview} onChange={e => { cubeLab.live(); cubeLab.set({ preview: e.target.checked }); }} />Test cube preview</label>
     </section>
-    <details className="cube-info"><summary>Developer View</summary><label className="check-field"><input type="checkbox" checked={s.debug} onChange={e => cubeLab.set({ debug: e.target.checked })} />Marker corners / ID 101</label><dl><dt>Detection</dt><dd>{s.debugResult?.fps.toFixed(1) ?? '--'} Hz</dd><dt>POSIT error</dt><dd>{s.debugResult?.error?.toFixed(2) ?? '--'} px</dd></dl><pre>Raw: {JSON.stringify(s.raw, null, 2)}{ '\n' }Filtered: {JSON.stringify(s.filtered, null, 2)}</pre></details>
-    {s.message && <p className="overlap-warning" role="alert">{s.message}</p>}
+    <details className="cube-info"><summary>Developer View</summary><dl><dt>POSIT error</dt><dd>{s.debugResult?.error?.toFixed(2) ?? '--'} px</dd></dl><pre>Raw: {JSON.stringify(s.raw, null, 2)}{ '\n' }Filtered: {JSON.stringify(s.filtered, null, 2)}</pre></details>
   </aside>;
 }
 export function CubeTimeline() {

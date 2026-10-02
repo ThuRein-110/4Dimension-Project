@@ -9,6 +9,15 @@
 7. Point the marked face toward the webcam with even lighting. Start tracking. **DETECTED** then **TRACKING** comes from actual ArUco detection, not a timer or demo animation. Start with the cube about 0.3-0.8 m away so the marker occupies enough pixels.
 8. If there is no detection, verify ID 101, adequate size in the image, no glare, no motion blur, and all four borders visible. The separate room-calibration marker (ID 100) does not track this cube.
 
+**Show Marker 101** displays the exact family/ID and print/download options.
+The regenerated PNG/SVG preserves a full 5 mm white quiet margin around the
+40 mm black square. See [CUBE_MARKER_101](CUBE_MARKER_101.md) for asset details.
+Use Tracking Diagnostics > Test Marker Image to check the decoder independently
+of your camera; that isolated self-test never changes live tracking or records
+fake poses. Debug Tracking shows all IDs/corners/center/polygons/FPS and actual
+frame counts. If you see ERROR, resolve its camera/worker message before tracking.
+If the marker is decoded but pose fails, MARKER FOUND / POSE UNAVAILABLE is shown.
+
 ## First Visual Milestone
 
 Before tracking, enable **Test cube preview**. This renders a static virtual cube at 0.5 m to verify the transparent Three.js layer. It is explicitly a test cube, does not fake tracking, and cannot be recorded. Disable it before starting real tracking.
@@ -42,7 +51,10 @@ Scrub to each desired time and add named keyframes: Start, Left, Right, Near, Fa
 - Import Recording JSON works without any camera. Its recorded resolution/FOV/cube size drives replay projection. A current video background with a different aspect/FOV or a moved camera will not align with an old take.
 - JSON schema v1 includes ID, creation date, name, coordinate convention, approximate camera metadata, marker/cube dimensions, sample rate, duration, pose samples, confidence proxy, and keyframes. Validation rejects invalid quaternions, nonfinite values, duplicate/out-of-order sample times, and out-of-range keyframes. Imports are limited to 8 MB.
 - Limits: 12,000 samples, one hour elapsed recording time, 100 keyframes. Pause excludes paused wall-clock time. Loss excludes samples but retains elapsed time. Sampling/worker capture targets 10-20 Hz; the Three.js overlay renders on requestAnimationFrame. Confidence is a POSIT-error proxy, not a calibrated probability.
-- 4D Data shows only ten samples per page. Developer View exposes actual corners, ID, raw/filtered poses, POSIT error, and detection rate. Optional time-series graphs and full intrinsic calibration are deferred.
+- 4D Data shows only ten samples per page. Tracking Diagnostics exposes all IDs,
+  corners/center/polygons, FPS, processed/source dimensions and frame count.
+  Developer View exposes raw/filtered poses and POSIT error. Optional time-series
+  graphs and full intrinsic calibration are deferred.
 
 ## Evidence, Not a Physical Completion Claim
 

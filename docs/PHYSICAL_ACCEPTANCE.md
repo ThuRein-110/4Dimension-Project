@@ -14,6 +14,7 @@ must not be treated as evidence of real lens accuracy or physical alignment.
 | Cube Lab Hardware Check | Result |
 | --- | --- |
 | Webcam model / resolution / fixed mounting / FOV | Pending |
+| Separate real-camera probe, no fake device (2026-10-02) | Device in use; no frame/detection verified |
 | Printed ID 101 black edge actual width / cube side | Pending |
 | Real detection / approximate alignment / XYZ and rotation | Pending |
 | Left/right/near/far/up/rotate recorded | Pending |

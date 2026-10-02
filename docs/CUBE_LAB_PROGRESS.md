@@ -3,6 +3,19 @@
 Date: 2026-10-02. Current status: **software milestones verified; real physical
 cube acceptance pending**. No further furniture/room feature expansion was made.
 
+## Tracking Debug Follow-Up
+
+The original detector and marker family/ID matched, but detection was incorrectly
+gated on pose success, frame skips were silent, and other IDs were discarded.
+These paths now expose separate detection/pose status, ERROR/ready/frame telemetry,
+all-ID debug corners/center/polygon/FPS, exact marker preview and an isolated
+generated-PNG self-test. The regenerated ID 101 assets include full quiet margins.
+Current verification: 37 unit tests, 28 browser tests, lint/typecheck/build and
+production smoke pass. The real-camera probe returned Device in use; physical
+tracking is not marked passed. See CUBE_TRACKING_DEBUG.md and CUBE_MARKER_101.md.
+
+The phase table below records the original delivery and its historical counts.
+
 | Phase | Implementation / Evidence |
 | --- | --- |
 | 1: inspect | Existing DesktopApp webcam/video ownership, viewport, ThreeOverlay, contentRect, worker and POSIT APIs inspected before changes |

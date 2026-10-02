@@ -6,7 +6,9 @@ import type { CubeTrackingResult } from '../../../../packages/cube-lab/src/CubeT
 const snapshot = (r: CubeRecording | null) => r ? { ...r, samples: [...r.samples], keyframes: [...r.keyframes] } : null;
 
 interface CubeState {
-  mode: 'LIVE' | 'RECORDING' | 'PLAYBACK'; tracking: 'NOT_FOUND' | 'DETECTED' | 'TRACKING' | 'LOST'; enabled: boolean;
+  mode: 'LIVE' | 'RECORDING' | 'PLAYBACK'; tracking: 'NOT_FOUND' | 'DETECTED' | 'TRACKING' | 'LOST' | 'ERROR'; enabled: boolean;
+  engine: 'idle' | 'loading' | 'ready' | 'error'; frameStatus: 'idle' | 'waiting' | 'receiving' | 'error'; framesProcessed: number;
+  lastDetected: number; missed: number;
   raw: CubePose | null; filtered: CubePose | null; lastFound: number; consecutive: number;
   markerSizeMm: number; cubeSizeMm: number; fov: number; fovAxis: 'horizontal' | 'vertical'; smoothing: Smoothing; sampleRate: number;
   width: number; height: number; source: string; cube: boolean; axes: boolean; trajectory: boolean; label: boolean; debug: boolean; preview: boolean;
@@ -18,6 +20,7 @@ export class CubeLabStore {
   readonly controller = new CubeRecordingController();
   private lastTick = 0;
   private state: CubeState = { mode: 'LIVE', tracking: 'NOT_FOUND', enabled: false, raw: null, filtered: null, lastFound: 0, consecutive: 0,
+    engine: 'idle', frameStatus: 'idle', framesProcessed: 0, lastDetected: 0, missed: 0,
     markerSizeMm: 40, cubeSizeMm: 57, fov: 60, fovAxis: 'vertical', smoothing: 'Medium', sampleRate: 15, width: 1280, height: 720, source: 'Windows webcam',
     cube: true, axes: true, trajectory: true, label: true, debug: false, preview: false, recording: null, paused: false, time: 0, playing: false, speed: 1, loop: false, name: 'Cube Test 01', debugResult: null, message: '' };
   get = () => this.state;
@@ -26,19 +29,30 @@ export class CubeLabStore {
   vfov() { return verticalFov(this.state.fov, this.state.fovAxis, this.state.width, this.state.height); }
   toggleTracking() {
     if (this.state.mode === 'RECORDING') this.stop();
-    this.set({ enabled: !this.state.enabled, raw: null, filtered: null, lastFound: 0, consecutive: 0, tracking: 'NOT_FOUND', preview: false, message: '' });
+    const enabled = !this.state.enabled;
+    this.set({ enabled, engine: enabled ? 'loading' : 'idle', frameStatus: enabled ? 'waiting' : 'idle', framesProcessed: 0, lastDetected: 0, missed: 0, debugResult: null, raw: null, filtered: null, lastFound: 0, consecutive: 0, tracking: 'NOT_FOUND', preview: false, message: '' });
+  }
+  fail(message: string) {
+    if (this.state.mode === 'RECORDING') this.stop();
+    this.set({ tracking: 'ERROR', enabled: false, engine: 'error', frameStatus: 'error', message, consecutive: 0, raw: null, filtered: null, lastFound: 0 });
   }
   result(result: CubeTrackingResult) {
+    if (!this.state.enabled) return;
     const now = performance.now(); const s = this.state;
-    if (result.filtered) {
-      let recording = s.recording;
-      if (s.mode === 'RECORDING' && this.controller.sample(result.filtered)) recording = snapshot(this.controller.recording);
-      this.set({ raw: result.raw, filtered: result.filtered, lastFound: now, consecutive: s.consecutive + 1, tracking: s.consecutive ? 'TRACKING' : 'DETECTED', debugResult: result, recording, message: result.message ?? '' });
-    } else this.set({ raw: result.raw, consecutive: 0, tracking: s.lastFound ? 'LOST' : 'NOT_FOUND', debugResult: result, message: result.message ?? '' });
+    if (result.engine === 'error') { this.fail(result.message ?? 'Vision engine failed'); return; }
+    if (!result.frameProcessed) { this.set({ engine: result.engine, frameStatus: result.frameStatus, message: result.message ?? '' }); return; }
+    let recording = s.recording;
+    if (result.filtered && s.mode === 'RECORDING' && this.controller.sample(result.filtered)) recording = snapshot(this.controller.recording);
+    const consecutive = result.detected ? s.consecutive + 1 : 0;
+    const missed = result.detected ? 0 : s.missed + 1;
+    const tracking = result.detected ? consecutive >= 3 ? 'TRACKING' : 'DETECTED' : s.lastDetected && now - s.lastDetected < 5000 ? missed >= 5 ? 'LOST' : s.tracking : 'NOT_FOUND';
+    this.set({ engine: result.engine, frameStatus: result.frameStatus, framesProcessed: s.framesProcessed + 1, raw: result.raw,
+      filtered: result.filtered ?? s.filtered, lastFound: result.filtered ? now : s.lastFound, lastDetected: result.detected ? now : s.lastDetected,
+      consecutive, missed, tracking, debugResult: result, recording, message: result.message ?? '' });
   }
   start() {
     const s = this.state;
-    if (!s.enabled || !s.filtered || (s.tracking !== 'TRACKING' && s.tracking !== 'DETECTED') || s.preview) return;
+    if (!s.enabled || !s.filtered || s.debugResult?.poseStatus !== 'available' || (s.tracking !== 'TRACKING' && s.tracking !== 'DETECTED') || s.preview) return;
     this.controller.start({ schemaVersion: 1, recordingId: crypto.randomUUID(), createdAt: new Date().toISOString(), name: s.name.trim() || 'Cube Test',
       coordinates: 'camera-relative: X right, Y up, Z depth; quaternion in Three.js camera basis',
       camera: { width: s.width, height: s.height, verticalFov: this.vfov(), calibration: 'approximate', source: s.source }, markerId: 101, markerSizeMm: s.markerSizeMm, cubeSizeMm: s.cubeSizeMm, sampleRate: s.sampleRate });
@@ -58,7 +72,10 @@ export class CubeLabStore {
   play() { if (!this.state.recording?.samples.length) return; if (this.state.mode === 'RECORDING') this.stop(); this.lastTick = performance.now(); this.set({ mode: 'PLAYBACK', playing: true, preview: false, time: this.state.time >= this.state.recording.durationMs ? 0 : this.state.time }); }
   tick(now: number) {
     const s = this.state;
-    if (s.enabled && s.lastFound && now - s.lastFound > 350 && s.tracking !== 'LOST') this.set({ tracking: 'LOST', consecutive: 0 });
+    if (s.enabled && s.lastDetected && now - s.lastDetected > 1000) {
+      const tracking = now - s.lastDetected > 5000 ? 'NOT_FOUND' : 'LOST';
+      if (s.tracking !== tracking) this.set({ tracking, consecutive: 0 });
+    }
     if (s.mode === 'RECORDING') {
       const time = this.controller.elapsed();
       if ((s.recording?.samples.length ?? 0) >= 12000 || time >= 3600000) { this.stop(); this.set({ message: 'Recording limit reached. Save or export this take.' }); }
@@ -88,7 +105,7 @@ export class CubeLabStore {
     const r = parseRecording(value); this.controller.clear();
     this.set({ recording: r, mode: 'PLAYBACK', time: 0, playing: false, paused: false, preview: false, name: r.name });
   }
-  suspend() { if (this.state.mode === 'RECORDING') this.stop(); this.set({ enabled: false, playing: false, filtered: null, raw: null, lastFound: 0, tracking: 'NOT_FOUND', consecutive: 0 }); }
+  suspend() { if (this.state.mode === 'RECORDING') this.stop(); this.set({ enabled: false, playing: false, filtered: null, raw: null, lastFound: 0, lastDetected: 0, missed: 0, tracking: 'NOT_FOUND', consecutive: 0, engine: 'idle', frameStatus: 'idle', framesProcessed: 0, debugResult: null }); }
 }
 export const cubeLab = new CubeLabStore();
 export const useCubeLab = () => useSyncExternalStore(cubeLab.subscribe, cubeLab.get);

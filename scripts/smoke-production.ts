@@ -75,13 +75,19 @@ try {
   await page.getByRole('button', { name: 'Seek keyframe Production midpoint', exact: true }).click();
   await page.getByRole('button', { name: 'Play cube recording', exact: true }).click();
   await page.getByRole('button', { name: 'Pause cube playback', exact: true }).click();
+  await page.getByRole('button', { name: 'Show Marker 101', exact: true }).click();
+  await page.getByRole('dialog', { name: 'Marker 101', exact: true }).waitFor();
+  await page.getByRole('button', { name: 'Close marker', exact: true }).click();
+  await page.getByText('Tracking Diagnostics', { exact: true }).click();
+  await page.getByRole('button', { name: 'Test Marker Image', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="cube-self-test"]')?.textContent?.includes('SELF-TEST PASS: ID 101'));
   await page.screenshot({ path: '.local/production-cube.png', fullPage: true });
   const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, ignoreHTTPSErrors: true });
   await phone.goto('https://localhost:5444/camera');
   await phone.getByRole('heading', { name: '4D LiveSpace Camera', exact: true }).waitFor();
   assert(!(await phone.evaluate(() => performance.getEntriesByType('resource').some(entry => entry.name.includes('DesktopApp-')))), 'Phone must not download the desktop editor');
   assert.deepEqual(errors, []);
-  console.log('Production smoke passed: compiled clients, QR/assets, room and cube 3D, JSON save, real ID 100/101 detection, cube record/scrub/export/import/offline replay/keyframes, phone bundle isolation.');
+  console.log('Production smoke passed: compiled clients, QR/assets, room and cube 3D, JSON save, real ID 100/101 detection, cube record/scrub/export/import/offline replay/keyframes, marker modal/self-test, phone bundle isolation.');
 } finally {
   await browser?.close();
   if (savedId) await fetch(`http://localhost:5174/api/projects/${savedId}`, { method: 'DELETE', headers: { 'x-livespace-client': 'desktop' } }).catch(() => undefined);

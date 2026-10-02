@@ -1,5 +1,20 @@
 # Phase Progress Notes
 
+## Cube Tracking Debug Fix
+
+Inspected actual code: js-aruco2 2.0.0, ARUCO_MIP_36h12 ID 101, real local worker.
+Separated decoded marker presence from POSIT/filter validity, retained legacy
+room pose behavior, and fixed silent missing/unready/paused-frame failures and
+worker error handling. Normal webcam frames retain 1280x720 detail. Start/Stop,
+engine readiness, all IDs, frame count, FPS, corners/center/polygon, pose failures
+and throttled logs are visible. Exact ID 101 PNG/SVG/PDF, Show Marker 101 and a
+separate known-image self-test are included; no fake live pose/state is injected.
+
+2026-10-02 verification: lint/typecheck, 37 unit tests, build, all 28 browser tests
+and production smoke pass, preserving webcam/phone/QR/HTTPS/media/planner flows.
+Real-camera probe returned Device in use; actual hardware tracking/alignment
+is not claimed. Debug inventory/root-cause boundaries: CUBE_TRACKING_DEBUG.md.
+
 ## Latest Priority: Fixed Webcam Room Planner
 
 The latest owner instruction restores Windows webcam -> transparent overlay ->
