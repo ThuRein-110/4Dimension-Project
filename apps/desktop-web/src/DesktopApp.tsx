@@ -17,6 +17,7 @@ import { captureView } from './planner/export.js';
 import { WebcamController } from './webcam/WebcamController.js';
 import { WebcamDiagnostics } from './webcam/WebcamDiagnostics.js';
 import { WebcamDeviceSelect } from './webcam/WebcamDeviceSelect.js';
+import type { WorkspaceMode } from '../../../packages/shared/src/project.js';
 
 type Source = 'phone' | 'webcam' | 'file' | 'demo';
 const names: Record<LinkState, string> = { connecting: 'Connecting', waiting: 'Waiting for iPhone', negotiating: 'Connecting video', live: 'iPhone Connected', reconnecting: 'Reconnecting', closed: 'Disconnected' };
@@ -45,6 +46,10 @@ export function DesktopApp() {
   const [telemetry, setTelemetry] = useState<Extract<Signal, { type: 'telemetry' }> | null>(null);
   const [ready, setReady] = useState(false);
   const planner = useWorkspace();
+  useEffect(() => {
+    const mode = new URLSearchParams(location.search).get('workspace');
+    if (mode && ['camera', 'cube', 'calibration', 'place', 'edit', 'measure', 'layouts', 'timeline', 'compare'].includes(mode)) workspace.mode(mode as WorkspaceMode);
+  }, []);
   const link = useRef<PeerLink | null>(null);
   const connectionSeen = useRef(false);
   const currentSession = useRef<SessionInfo | null>(null);

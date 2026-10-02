@@ -1,0 +1,18 @@
+.motion-app { min-height: 100vh; background: #111318; color: #e5e8ef; }
+.mode-tabs a { display: inline-flex; align-items: center; gap: 7px; padding: 10px 13px; color: #aeb7c6; text-decoration: none; font-size: 12px; white-space: nowrap; border-bottom: 2px solid transparent; }
+.mode-tabs a.active { color: #6ee7b7; border-color: #34d399; background: #192723; }
+.motion-main { padding: 18px 24px; max-width: 1800px; margin: auto; }
+.motion-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.motion-heading h1 { font-size: 22px; margin: 0; }
+.motion-actions, .motion-transport, .motion-metadata { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.motion-metadata { font-size: 12px; color: #abb5c5; padding: 16px 0; }
+.motion-metadata strong { color: #e5e8ef; }
+.motion-video-stage { height: min(64vh, 650px); min-height: 260px; position: relative; background: #080a0d; overflow: hidden; }
+.motion-video-stage video { width: 100%; height: 100%; object-fit: contain; }
+.motion-fullscreen { position: absolute; top: 10px; right: 10px; z-index: 3; }
+.motion-timeline { padding: 14px 0; border-top: 1px solid #303640; }
+.motion-timeline > input { width: 100%; accent-color: #34d399; }
+.motion-transport { margin-top: 12px; }
+.motion-transport output { font-variant-numeric: tabular-nums; min-width: 110px; }
+.motion-error { color: #ffb6b6; background: #361d24; padding: 12px; }
+@media(max-width: 700px) { .motion-main { padding: 14px 12px; } .motion-heading h1 { font-size: 20px; } .motion-app .app-header { flex-wrap: wrap; height: auto; padding: 12px; gap: 10px; } }

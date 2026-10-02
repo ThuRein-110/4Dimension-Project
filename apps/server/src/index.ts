@@ -11,6 +11,7 @@ import { lanAddresses, isLoopback } from './network.js';
 import { generateCertificates } from '../../../scripts/certificates.js';
 import { certificateDownload } from './certificate-download.js';
 import { projectRoutes } from './projects.js';
+import { motionRoutes } from './motion/routes.js';
 
 const app = express();
 const sessions = new SessionStore();
@@ -39,6 +40,7 @@ app.use((_req, res, next) => {
 app.use('/api', (_req, res, next) => { res.setHeader('Cache-Control', 'no-store'); next(); });
 app.get('/api/health', (_req, res) => res.json({ ok: true, tlsReady }));
 app.use('/api/projects', projectRoutes());
+app.use('/api/motion', motionRoutes());
 app.post('/api/sessions', (req, res) => {
   // Pairing starts on Windows localhost. A phone cannot allocate desktop credentials.
   if (!isLoopback(req.socket.remoteAddress) || req.headers['x-livespace-client'] !== 'desktop') {
