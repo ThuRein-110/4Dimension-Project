@@ -54,7 +54,12 @@ Reanalyze explicitly replaces a cache. Subsequent visits reuse validated results
 bound to source identity, pipeline version, sample rate and threshold. Replacing
 the recording clears stale tracks, selection and comparison.
 
-Split is the default: original video observations left, inferred 3D scene right.
+Split is the default: original video observations left, AUTO spatial view right.
+AUTO chooses estimated 3D only with sufficient body/depth quality, X/Z top-down
+for partial geometry, a relative-depth diagram for weak depth, or image-space
+trajectories without subject depth. Empty segments show an explicit unavailable
+message, not a decorative grid. The separate human Motion Lab now also hides its
+grid and pose controls when its current segment has no valid human pose.
 Video, 3D Research and Data are alternate views. Both canvases read the source
 video's currentTime directly; transport, frame stepping, events and visibility
 spans seek that same clock. Between samples, the nearest real observation is
@@ -68,15 +73,40 @@ offers subject and event tables, sample metrics, confidence/separation charts,
 depth assumptions and diagnostics. Timeline events are heuristic hypotheses;
 amber markers above 3D subjects indicate a recent event, not verified behavior.
 
-Overlays / Trails / Scene controls masks, labels, trails, past ghosts, relative
-depth heatmaps, uncertainty, floor and camera frustum. Ghosts and trajectories
+Display & Analysis controls masks, labels, trails, past ghosts, relative
+depth, uncertainty and optional reference floor/camera frustum. Ghosts and trajectories
 use recorded past observations only. Heading arrows describe estimated motion;
 the illustrative proxy head does not prove facing direction.
 
-Export supports combined report JSON, per-frame JSON, track/event CSV, annotated
-PNG, 3D PNG, split PNG and a silent annotated WebM. WebM is recorded locally in
+Outline masks, IDs and two-second trails are clean defaults; ghosts, boxes,
+class labels and event tags are optional. Medium causal temporal smoothing is
+default, with Off/Low/Medium/High choices. Raw samples remain in JSON. Large
+gaps/image jumps reset derivatives; weak motion hides heading. Acceleration and
+geometric encirclement require sufficient data and Advanced / Experimental.
+
+Activity heatmaps accumulate actual observation occupancy in spatial bins up to
+the current time. Selected/all subjects, available class hypotheses and observed
+proximity density are supported. Full Track History pauses playback and explicitly
+shows the entire recorded clip, including later recorded observations, not forecasts.
+Visible VIDEO/track/EVENTS/closest-pair lanes use actual samples. Source frame,
+video T and analysis sample are separate readouts. Graphs require at least two
+numeric observations; scene distances require usable depth for both subjects.
+
+Optional Manual Research Reference accepts paused-frame A/B points and a known
+distance. This scales inferred scene coordinates to approximate metres under an
+assumed pinhole/ground model, not recovered camera calibration. Both points must
+belong to one sampled reference time. Ground region rejects unsupported contact
+locations; horizon is a visual reference only. Clear removes the scale. References
+are source-bound and exported in JSON, but are not persisted across page reloads.
+
+Export supports combined report JSON, per-frame JSON, track/event/pair CSV,
+Markdown report, annotated PNG, spatial PNG, split PNG, a presentation snapshot
+with selected metrics/time/track lanes, and a silent annotated WebM.
+WebM is recorded locally in
 real time through a separate decoder; it does not move the interactive timeline.
-It can be cancelled. No export contains calibrated meters or true animal anatomy.
+It can be cancelled. MP4 encoding is not implemented; the verified WebM path is
+retained without a new upload/transcode endpoint. Uncalibrated results stay in
+relative units; manual scale remains approximate. No export contains true anatomy.
 
 ## Verification And Remaining Limits
 
@@ -93,7 +123,8 @@ reusing the cache. Verification refuses non-localhost URLs and blocks external
 browser requests.
 
 The current 15-second lion/hyena clip produced 75 real samples, seven track
-histories, 206 SAM 2 masks and 77 heuristic event hypotheses on local CUDA.
+histories, 208 SAM 2 masks and 40 persistent geometric event hypotheses on local CUDA
+with the v2 weak-detection recovery pipeline. Baseline v1 had 206 masks/77 events.
 Not all seven tracks are visible at once, and they are not a certified count of
 unique physical animals. The central animal's model classification remains
 `animal_unknown`; surrounding animals are canine/hyena hypotheses. Do not
@@ -105,5 +136,25 @@ calibrated occlusion probability. Masks can miss small or overlapping animals.
 Relative depth normalization cannot recover metric scale or compensate camera
 motion. The flat ground and camera frustum are assumed illustrations, not SLAM
 or calibrated camera recovery. Confidence/quality indices are not probabilities.
-Physical calibration, animal re-identification, anatomy/keypoints, camera-motion
+Verified physical calibration, appearance re-identification, anatomy/keypoints, camera-motion
 compensation and validated biological interpretation remain future work.
+
+Track quality combines mean detection score, sampled continuity and image-jump
+warnings. Occlusion states use overlap/disappearance heuristics. Identity switches
+are Unknown, not zero. Weak detections can recover existing ByteTrack IDs without
+activating new weak tracks. Event evidence records coordinate system, value and
+window; persistence suppresses transient approach/retreat labels. No flow or
+predicted animal states are generated.
+
+Cache v2 binds source metadata identity, pipeline and settings; model IDs/revisions
+and tracker runtime are recorded. Fresh analyses also record the SHA-256 of the
+actual prepared input bytes. This is audit evidence, not continuous rehashing on
+every playback request. See [Maximum 4D Reality Audit](MAX_4D_REALITY_AUDIT.md).
+
+4D LiveSpace performs monocular spatiotemporal scene analysis by combining
+object detection, instance segmentation, multi-object tracking, monocular
+depth estimation and temporal analytics to estimate how subjects move
+through 3D space over time.
+
+Because the source is a single uncalibrated camera, depth and physical
+distance are estimates rather than ground-truth measurements.

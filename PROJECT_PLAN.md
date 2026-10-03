@@ -76,3 +76,13 @@ not replace webcam-first planning, Cube Lab or human Motion Lab.
 
 See docs/RESEARCH_VIEW.md for installation, current real-model evidence and
 remaining scientific limitations. Private media/models/derived data stay ignored.
+
+## Maximum Honest 4D Upgrade
+
+The baseline audit is docs/MAX_4D_REALITY_AUDIT.md. Current extension phases:
+tracking weak-detection recovery -> causal quality-gated refinement -> AUTO
+spatial fallback -> recorded occupancy/pair/group analytics -> visible timeline
+lanes -> data-only graphs/inspectors -> scientific exports -> real-clip validation.
+Manual references are optional approximate scale, not recovered camera pose.
+Future optical flow, prediction, animal anatomy and multi-camera reconstruction
+have no placeholder controls. No phase depends on an iPhone or marker.

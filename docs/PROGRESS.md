@@ -268,3 +268,44 @@ hyena/canine labels are hypotheses. Heading means estimated motion, not facing;
 long occlusions/camera edits can switch IDs. The original recording's bytes,
 size and mtime are unchanged. Media, weights, masks, reports and visual test
 evidence remain local and ignored. See [RESEARCH_VIEW](RESEARCH_VIEW.md).
+
+## Maximum Honest 4D
+
+2026-10-03: audited f29db04 before changing functionality. The baseline and
+post-change classifications are [MAX_4D_REALITY_AUDIT](MAX_4D_REALITY_AUDIT.md).
+The existing repo and pinned local models are preserved. ByteTrack weak-score
+recovery and whole-track class aggregation are corrected. Raw observations are
+retained; causal Medium smoothing, gap/jump derivative guards, depth-quality
+gates, heading hysteresis/rate limits and continuity-quality indices are added.
+Verified identity switches remain Unknown.
+
+AUTO now selects the strongest valid spatial representation for each segment.
+This clip defaults to X/Z top-down, not an unsupported anatomical 3D claim.
+Manual estimated Three.js mode is framed against actual scene bounds. Weak or
+missing depth uses relative-depth or image trajectories; missing subjects use
+an explicit unavailable message, never a grid. Human Motion Lab's no-pose grid
+is also suppressed without replacing its separate workflow.
+
+Recorded occupancy/proximity heatmaps, optional full-clip composites, observed
+past ghosts, visible VIDEO/track/event/pair lanes, current sample/source-frame
+readouts, quality-gated graphs, observed-only inspectors, all-pair closest
+approach and spatial group geometry are functional. Optional A/B known-distance
+references provide approximate scale; manual ground region/horizon limitations
+are explicit. Acceleration and encirclement remain Advanced experimental metrics.
+Pair CSV, Markdown report and a metrics/time/lanes snapshot expand exports to 11.
+Silent annotated WebM remains the verified video export; MP4, optical flow,
+prediction, appearance ReID and anatomical capture are not implemented or faked.
+
+Final validation: lint/typecheck, 88 unit tests, all 53 browser tests, production
+build, production smoke, fresh local real-video inference and compiled-production
+real-clip playback/export integration pass. The unchanged clip produces 75 real
+samples, seven histories, 208 masks and 40 evidence-bearing geometric events.
+Medium smoothing reduces mean consecutive depth changes by 42.1% for this clip,
+not a ground-truth accuracy claim. AUTO/map/3D moving nonblank pixels, heatmaps,
+manual scale/clear, timeline synchronization, fullscreen, selection/comparison,
+all 11 exports, decoded WebM/cancellation and no playback inference are verified.
+An intermediate Cube Lab recording timeout passed on a full rerun without code
+changes to that module. Existing Vite large-chunk warnings remain.
+
+Original video size and mtime are unchanged. Git tracks no video/model/private
+cache/test-result files; privacy patterns were checked before staging this update.

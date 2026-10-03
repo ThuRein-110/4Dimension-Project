@@ -42,6 +42,15 @@ async function fixtureApp(page:Page) {
   await page.goto('/motion');
   await expect(page.getByRole('button',{name:'Analyze Motion',exact:true})).toBeEnabled();
 }
+test('human 3D mode does not show a decorative grid without a valid pose',async({page})=>{
+  await fixtureApp(page);
+  await page.getByRole('button',{name:'Split View',exact:true}).click();
+  await expect(page.locator('.motion-empty')).toContainText('3D reconstruction unavailable for this segment');
+  await expect(page.getByRole('combobox',{name:'3D view preset'})).toBeDisabled();
+  await expect(page.locator('.motion-3d-stage canvas')).toHaveAttribute('data-pose-visible','false');
+  await expect(page.locator('.motion-empty a')).toHaveAttribute('href','/research');
+});
+
 test('CI motion flow: progress, synchronized poses, keyframes, trails, views, exports and cache',async({page})=>{
   await fixtureApp(page);
   await page.getByRole('button',{name:'Analyze Motion',exact:true}).click();

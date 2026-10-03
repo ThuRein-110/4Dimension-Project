@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const RESEARCH_VERSION = 'wildlife-dino-sam2-byte-depth-v1';
+export const RESEARCH_VERSION = 'wildlife-dino-sam2-byte-depth-v2-recovery';
 const finite=z.number().finite(),confidence=finite.min(0).max(1),normalized=finite.min(0).max(1);
 const vector=z.object({x:finite,y:finite,z:finite});
 export const researchSettingsSchema=z.object({fps:z.union([z.literal(2),z.literal(3),z.literal(5),z.literal(10)]).default(5),threshold:finite.min(.1).max(.8).default(.23)});
@@ -10,22 +10,27 @@ export const subjectSchema=z.object({
   bbox:z.tuple([normalized,normalized,normalized,normalized]),mask:z.array(z.array(z.tuple([normalized,normalized])).min(3).max(256)).max(4),maskConfidence:confidence.nullable(),
   center2D:z.object({x:normalized,y:normalized}),depthEstimate:z.object({value:finite.positive().nullable(),confidence:confidence.nullable(),method:z.string().max(120)}),
   worldEstimate:vector.nullable(),volume:z.object({length:finite.positive(),width:finite.positive(),height:finite.min(0),confidence}),
-  heading:finite.nullable(),velocity:vector.extend({speed:finite.min(0)}).nullable(),acceleration:finite.min(0).nullable(),visibility:confidence,confidence,stateFlags:z.array(z.enum(['observed','occluded','lost'])).max(3),
+  heading:finite.nullable(),velocity:vector.extend({speed:finite.min(0)}).nullable(),acceleration:finite.min(0).nullable(),visibility:confidence,confidence,stateFlags:z.array(z.enum(['observed','partially occluded','occluded','lost'])).max(4),kinematicQuality:confidence.optional(),
 });
 export type ResearchSubject=z.infer<typeof subjectSchema>;
-export const eventSchema=z.object({id:z.string().max(120),time:finite.min(0),type:z.enum(['enter','exit','approach','retreat','close encounter','encirclement tendency','stationary','rapid motion']),subjects:z.array(z.number().int().positive()).min(1).max(32),confidence,label:z.string().max(200)});
+export const eventSchema=z.object({id:z.string().max(120),time:finite.min(0),type:z.enum(['enter','exit','approach','retreat','close encounter','encirclement tendency','stationary','rapid motion']),subjects:z.array(z.number().int().positive()).min(1).max(32),confidence,label:z.string().max(200),evidence:z.object({coordinateSystem:z.enum(['image','relative scene']),value:finite,windowSeconds:finite.nonnegative(),description:z.string().max(200)}).optional()});
 export type ResearchEvent=z.infer<typeof eventSchema>;
-export const researchFrameSchema=z.object({time:finite.min(0),frameIndex:z.number().int().min(0),subjects:z.array(subjectSchema).max(32),depthMap:z.object({width:z.number().int().min(1).max(64),height:z.number().int().min(1).max(64),rect:z.tuple([normalized,normalized,normalized,normalized]),values:z.array(confidence).max(4096)}),events:z.array(eventSchema).max(1024),diagnostics:z.object({inferenceMs:finite.min(0),subjects:z.number().int().min(0),missingMasks:z.number().int().min(0)})}).superRefine((frame,ctx)=>{
+export const researchFrameSchema=z.object({time:finite.min(0),frameIndex:z.number().int().min(0),subjects:z.array(subjectSchema).max(32),rawSubjects:z.array(subjectSchema).max(32).optional(),depthMap:z.object({width:z.number().int().min(1).max(64),height:z.number().int().min(1).max(64),rect:z.tuple([normalized,normalized,normalized,normalized]),values:z.array(confidence).max(4096)}),events:z.array(eventSchema).max(1024),diagnostics:z.object({inferenceMs:finite.min(0),subjects:z.number().int().min(0),missingMasks:z.number().int().min(0)})}).superRefine((frame,ctx)=>{
   if(frame.depthMap.values.length!==frame.depthMap.width*frame.depthMap.height||new Set(frame.subjects.map(subject=>subject.id)).size!==frame.subjects.length)ctx.addIssue({code:'custom',message:'Invalid depth map or duplicate subject IDs'});
 });
 export type ResearchFrame=z.infer<typeof researchFrameSchema>;
-export const researchTrackSchema=z.object({id:z.number().int().positive(),label:z.string().max(80),classConfidence:confidence,firstSeen:finite.min(0),lastSeen:finite.min(0),observations:z.number().int().positive()});
+export const researchTrackSchema=z.object({id:z.number().int().positive(),label:z.string().max(80),classConfidence:confidence,firstSeen:finite.min(0),lastSeen:finite.min(0),observations:z.number().int().positive(),quality:z.object({score:confidence,continuity:confidence,meanDetection:confidence,missingSamples:z.number().int().nonnegative(),jumpWarnings:z.number().int().nonnegative(),identitySwitches:z.null()}).optional()});
+const point=z.object({x:normalized,y:normalized});
+export const researchCalibrationSchema=z.object({sourceId:z.string(),time:finite.nonnegative(),horizon:normalized.nullable(),ground:z.tuple([normalized,normalized,normalized,normalized]).nullable(),a:point.nullable(),b:point.nullable(),metres:finite.positive().max(1000)});
+export type ResearchCalibration=z.infer<typeof researchCalibrationSchema>;
 const rawFields={frames:z.array(researchFrameSchema).min(1).max(1200),tracks:z.array(researchTrackSchema).max(1024),models:z.record(z.object({id:z.string().max(200),revision:z.string().regex(/^[a-f0-9]{40}$/)})),runtime:z.object({device:z.enum(['cpu','cuda']),seconds:finite.min(0)}),ground:z.object({method:z.string().max(200),focalNormalized:finite.positive(),scale:z.literal('relative scene units')})};
 export const rawResearchSchema=z.object(rawFields);
 export const researchAnalysisSchema=z.object({
   ...rawFields,schemaVersion:z.literal(1),pipelineVersion:z.literal(RESEARCH_VERSION),id:z.string().regex(/^[a-f0-9]{64}$/),settings:researchSettingsSchema,
   video:z.object({id:z.string().min(1).max(512),name:z.string().max(256),duration:finite.positive().max(120),width:finite.positive(),height:finite.positive(),fps:finite.positive(),size:finite.min(0),mtimeMs:finite.min(0),codec:z.string(),rotation:finite}),
   events:z.array(eventSchema).max(10000),warnings:z.array(z.string().max(300)).max(30),
+  refinement:z.object({version:z.literal('temporal-v1'),smoothing:z.enum(['off','low','medium','high']),units:z.enum(['relative scene units','approximate metres']),scale:finite.positive(),calibration:researchCalibrationSchema.nullable()}).optional(),
+  sourceHash:z.string().regex(/^[a-f0-9]{64}$/).optional(),
 }).superRefine((analysis,ctx)=>{
   const ids=new Set(analysis.tracks.map(track=>track.id));
   if(ids.size!==analysis.tracks.length||analysis.frames.some((frame,i)=>frame.time>analysis.video.duration+.001||(i>0&&frame.time<=analysis.frames[i-1].time)||frame.subjects.some(subject=>!ids.has(subject.id))))ctx.addIssue({code:'custom',message:'Invalid research track identities or source timestamps'});

@@ -28,10 +28,20 @@
 .research-video-stage video, .research-video-stage canvas { width: 100%; height: 100%; }
 .research-video-stage canvas { position: absolute; inset: 0; }
 .research-3d-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.research-spatial { min-width: 0; background: #111318; }
+.research-spatial-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 8px 12px; font-size: 11px; background: #1b2028; }
+.research-spatial-toolbar label { display: flex; gap: 6px; align-items: center; }
+.research-status { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 10px 0; border-top: 1px solid #303840; }
+.research-status span { display: grid; gap: 4px; font-size: 11px; }
+.research-status small { color: #aeb8c7; }
+.research-status strong { font-size: 11px; }
+.research-calibration { font-size: 12px; padding: 8px 0 12px; }
+.research-calibration summary { cursor: pointer; }
+.research-calibration .research-options { margin-top: 10px; }
 .research-empty { position: absolute; top: 12px; left: 12px; font-size: 12px; color: #b8c3d1; pointer-events: none; }
 .research-axis-legend { padding: 7px 10px; color: #aeb8c7; font-size: 10px; }
 .mode-video .research-views, .mode-3d .research-views { grid-template-columns: minmax(0,1fr); }
-.mode-video .research-view:nth-child(2), .mode-3d .research-view:first-child, .mode-data .research-views { position: absolute; left: -10000px; width: min(100%,700px); visibility: hidden; }
+.mode-video .research-spatial, .mode-3d .research-view:first-child, .mode-data .research-views { position: absolute; left: -10000px; width: min(100%,700px); visibility: hidden; }
 .research-timeline { border-top: 1px solid #303840; padding: 12px 0; }
 .research-timeline > input { width: 100%; accent-color: #65c9df; }
 .research-transport { padding-top: 10px; font-size: 12px; }
@@ -43,6 +53,14 @@
 .research-visibility > div { display: grid; grid-template-columns: 46px minmax(0,1fr) 100px; gap: 10px; align-items: center; padding-top: 5px; }
 .research-visibility > div > div { position: relative; height: 8px; background: #272f37; }
 .research-visibility span { position: absolute; height: 8px; }
+.research-visibility > div > div > button { position: absolute; min-width: 2px; min-height: 0; height: 8px; border: 0; border-radius: 0; padding: 0; }
+.research-visibility > div > button { min-height: 22px; padding: 2px; }
+.research-visibility .closest-marker { width: 6px; background: #efb556; }
+.research-visibility .selected-lane { background: #202a31; }
+.research-visibility .research-video-lane { background: #52616a; }
+.research-frame-readout { font-size: 11px; color: #bcc8d5; margin-top: 10px; }
+.research-graph-choice { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.research-experimental { margin-top: 12px; padding: 10px 0; }
 .research-inspector { border-top: 1px solid #303840; padding: 16px 0; }
 .research-inspector h2 { font-size: 15px; margin: 0 0 12px; }
 .research-inspector summary { font-size: 15px; font-weight: 600; cursor: pointer; margin-bottom: 12px; }

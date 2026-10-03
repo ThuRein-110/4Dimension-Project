@@ -83,7 +83,8 @@ def main():
         with torch.inference_mode():
             inputs = detector_processor(images=image, text='a lion. a hyena. an animal.', return_tensors='pt').to(device)
             outputs = detector(**inputs)
-            result = detector_processor.post_process_grounded_object_detection(outputs, inputs.input_ids, threshold=args.threshold, text_threshold=.2, target_sizes=[(bottom - top, width)])[0]
+            # Keep weak candidates for ByteTrack's second association stage, not new tracks.
+            result = detector_processor.post_process_grounded_object_detection(outputs, inputs.input_ids, threshold=max(.1, args.threshold * .55), text_threshold=.2, target_sizes=[(bottom - top, width)])[0]
             boxes = result['boxes'].cpu().numpy()
             if len(boxes):
                 boxes[:, [1, 3]] += top
@@ -121,12 +122,13 @@ def main():
             text = str(labels[source_index]).lower()
             label = 'lion / big cat' if 'lion' in text and 'hyena' not in text else 'hyena / canine-like' if 'hyena' in text and 'lion' not in text else 'animal_unknown'
             score = float(tracked.confidence[i])
-            track = tracks.setdefault(track_id, {'id': track_id, 'label': label, 'classConfidence': score, 'firstSeen': timestamp, 'lastSeen': timestamp, 'observations': 0, 'votes': {}})
+            track = tracks.setdefault(track_id, {'id': track_id, 'label': label, 'classConfidence': score, 'firstSeen': timestamp, 'lastSeen': timestamp, 'observations': 0, 'votes': {}, 'scoreSum': 0})
             track['votes'][label] = track['votes'].get(label, 0) + score
             track['label'] = max(track['votes'], key=track['votes'].get)
-            track['classConfidence'] = min(.85, track['votes'][track['label']] / max(.001, sum(track['votes'].values())) * score)
             track['lastSeen'] = timestamp
             track['observations'] += 1
+            track['scoreSum'] += score
+            track['classConfidence'] = min(.85, track['votes'][track['label']] / max(.001, sum(track['votes'].values())) * track['scoreSum'] / track['observations'])
             polygons, mask_quality, median, dispersion = [], None, None, None
             if masks is not None:
                 mask = np.zeros((height, width), dtype=np.uint8)
@@ -190,7 +192,7 @@ def main():
                 if previous_velocity:
                     subject['acceleration'] = math.sqrt(sum(((velocity[axis] - previous_velocity[axis]) / dt) ** 2 for axis in ('x', 'y', 'z')))
             history[subject['id']] = (frame['time'], subject)
-    cleaned_tracks = [{k: v for k, v in track.items() if k != 'votes'} for track in tracks.values()]
+    cleaned_tracks = [{k: v for k, v in track.items() if k not in ('votes', 'scoreSum')} for track in tracks.values()]
     result = {'frames': frames, 'tracks': cleaned_tracks, 'models': {k: {'id': v[0], 'revision': v[1]} for k, v in MODELS.items()}, 'runtime': {'device': device, 'seconds': time.monotonic() - started}, 'ground': {'method': 'assumed flat ground / uncalibrated pinhole', 'focalNormalized': .9, 'scale': 'relative scene units'}}
     output = Path(args.output)
     temporary = output.with_suffix('.tmp.json')

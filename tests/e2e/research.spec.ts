@@ -11,8 +11,9 @@ import { researchIdentity } from '../../packages/shared/src/research.js';
 const directory=mkdtempSync(join(tmpdir(),'research-ci-')),file=join(directory,'fixture.mp4');
 execFileSync(ffmpeg!,['-hide_banner','-loglevel','error','-f','lavfi','-i','color=c=gray:s=160x240:r=10:d=1','-an','-c:v','libx264','-bf','0','-pix_fmt','yuv420p','-movflags','+faststart',file],{windowsHide:true});
 const videoBytes=readFileSync(file);unlinkSync(file);rmdirSync(directory);
-async function fixtureApp(page:Page,cached=true){
+async function fixtureApp(page:Page,cached=true,transform?:(data:Awaited<ReturnType<typeof researchFixture>>)=>void){
   let data=await researchFixture(),running=false,cancelled=false,starts=0;
+  transform?.(data);
   await page.route('**/api/motion/demo/info',route=>route.fulfill({json:{...data.video,status:'ready',prepared:false,url:'/api/motion/research-ci-video'}}));
   await page.route('**/api/motion/research-ci-video',route=>{
     const range=route.request().headers().range?.match(/^bytes=(\d+)-(\d*)$/);
@@ -36,15 +37,15 @@ test('research cached playback, temporal selection, masks, pair metrics, views a
   await expect(page.locator('.research-pair')).toContainText('Paired observations');await expect(page.locator('.research-inspector')).toContainText('Facing');
   await page.getByRole('spinbutton',{name:'Pair Interval Start'}).fill('.2');await page.getByRole('spinbutton',{name:'Pair Interval End'}).fill('.6');
   await page.getByRole('button',{name:'Next research frame',exact:true}).click();await expect.poll(()=>page.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime)).toBeCloseTo(.5);
-  await page.getByText('Overlays / Trails / Scene',{exact:true}).click();
-  for(const name of ['Masks','3D Ghosts','3D Trajectories','Uncertainty'])await expect(page.getByRole('checkbox',{name,exact:true})).toBeChecked();
+  await page.getByText('Display & Analysis',{exact:true}).click();
+  for(const name of ['Masks','3D Trajectories','Uncertainty'])await expect(page.getByRole('checkbox',{name,exact:true})).toBeChecked();
   await page.getByRole('combobox',{name:'Mask Style'}).selectOption('both');await page.getByRole('checkbox',{name:'Relative Depth Map',exact:true}).check();await page.getByRole('checkbox',{name:'3D Labels',exact:true}).check();await page.getByRole('button',{name:'Fill',exact:true}).click();await page.getByRole('button',{name:'Fit',exact:true}).click();
   await page.getByRole('button',{name:'Fullscreen research presentation',exact:true}).click();await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.contains(document.querySelector('.research-timeline')))).toBe(true);await page.evaluate(()=>document.exitFullscreen());
-  for(const mode of ['report','frames','tracks','events','video','3d','split','annotated']){
-    await page.getByRole('combobox',{name:'Research Export'}).selectOption(mode);const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Export research data'}).click();const download=await pending,bytes=readFileSync((await download.path())!);expect(bytes.length).toBeGreaterThan(100);if(mode==='report')expect(JSON.parse(bytes.toString()).id).toBe(app.data.id);if(mode==='frames')expect(JSON.parse(bytes.toString())).toHaveLength(5);if(['video','3d','split'].includes(mode))expect(bytes.subarray(1,4).toString()).toBe('PNG');
+  for(const mode of ['report','frames','tracks','events','pairs','markdown','snapshot','video','3d','split','annotated']){
+    await page.getByRole('combobox',{name:'Research Export'}).selectOption(mode);const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Export research data'}).click();const download=await pending,bytes=readFileSync((await download.path())!);expect(bytes.length).toBeGreaterThan(100);if(mode==='report')expect(JSON.parse(bytes.toString()).id).toBe(app.data.id);if(mode==='frames')expect(JSON.parse(bytes.toString())).toHaveLength(5);if(['video','3d','split','snapshot'].includes(mode))expect(bytes.subarray(1,4).toString()).toBe('PNG');
   }
   await page.getByRole('button',{name:'Data',exact:true}).click();
-  for(const name of ['Subjects','Events','Metrics','Depth','Diagnostics']){await page.getByRole('tab',{name,exact:true}).click();await expect(page.getByRole('tabpanel',{name,exact:true})).toBeVisible();}
+  for(const name of ['Subjects','Events','Metrics','Pairs','Depth','Diagnostics']){await page.getByRole('tab',{name,exact:true}).click();await expect(page.getByRole('tabpanel',{name,exact:true})).toBeVisible();}
   await expect(page.getByRole('tabpanel',{name:'Diagnostics'})).toContainText('cached data only');
   await page.getByRole('button',{name:'Split',exact:true}).click();await page.setViewportSize({width:390,height:844});await expect(page.locator('.research-3d-stage canvas')).toBeVisible();await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.reload();await expect(page.locator('.research-analysis')).toContainText('cache hit');expect(app.starts).toBe(0);
@@ -54,10 +55,53 @@ test('research jobs can complete or cancel; replacing the source removes old ana
   const app=await fixtureApp(page,false);await page.getByRole('button',{name:'Analyze Wildlife',exact:true}).click();await expect(page.getByRole('button',{name:'Cancel Analysis',exact:true})).toBeVisible();await page.getByRole('button',{name:'Cancel Analysis',exact:true}).click();await expect(page.locator('.research-analysis')).toContainText('cancelled');
   await page.getByRole('button',{name:'Analyze Wildlife',exact:true}).click();await expect(page.getByRole('button',{name:'Cancel Analysis',exact:true})).toBeVisible();app.complete();await expect(page.locator('.research-analysis')).toContainText('5 samples / 2 tracks');
   await page.getByRole('combobox',{name:'Selected Research Subject'}).selectOption('1');await page.getByRole('combobox',{name:'Compare Research Subject'}).selectOption('2');
-  await app.changeSource();await page.getByRole('button',{name:'Refresh source video',exact:true}).click();await expect(page.getByRole('combobox',{name:'Selected Research Subject'})).toHaveValue('');await expect(page.getByRole('combobox',{name:'Compare Research Subject'})).toHaveValue('');await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-subjects','0');
+  await app.changeSource();await page.getByRole('button',{name:'Refresh source video',exact:true}).click();await expect(page.locator('.research-inspector')).toHaveCount(0);await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-subjects','0');
   await expect(page.getByRole('button',{name:'Export research data'})).toBeDisabled();expect(app.data.id).toBe(await researchIdentity('b'.repeat(64),app.data.settings));
 });
 
 test('corrupt research cache is reported without displaying stale animal geometry',async({page})=>{
   await fixtureApp(page,false);await page.route('**/api/motion/research/analyses/*',route=>route.fulfill({status:422,json:{error:'Invalid CI cache'}}));await page.reload();await expect(page.getByRole('alert')).toContainText('cache is invalid');await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-subjects','0');
+});
+
+test('AUTO gates weak and absent depth without empty geometry or unsupported graphs',async({page})=>{
+  await fixtureApp(page,true,data=>{for(const frame of data.frames){for(const subject of frame.subjects){subject.depthEstimate={value:null,confidence:null,method:'CI unavailable'};subject.worldEstimate=null;subject.velocity=null;subject.heading=null;}}});
+  await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-spatial-mode','image');
+  await page.getByRole('slider',{name:'Research time',exact:true}).fill('0.4');
+  await page.getByRole('combobox',{name:'Selected Research Subject'}).selectOption('1');
+  await page.getByRole('button',{name:'Data',exact:true}).click();
+  await expect(page.getByRole('tab',{name:'Depth',exact:true})).toHaveCount(0);
+  await expect(page.getByRole('combobox',{name:'Research Graph'}).locator('option')).toHaveText(['Detection Score']);
+  await expect(page.locator('.research-chart')).toHaveAttribute('data-valid-points','5');
+  await expect(page.locator('.research-inspector')).not.toContainText('NaN');
+});
+
+test('AUTO, heatmaps, smoothing and optional manual references use recorded samples',async({page})=>{
+  await fixtureApp(page);
+  await page.getByRole('slider',{name:'Research time',exact:true}).fill('0.4');
+  await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-spatial-mode','top');
+  await page.getByText('Display & Analysis',{exact:true}).click();
+  await page.getByRole('combobox',{name:'Temporal Smoothing'}).selectOption('high');
+  await page.getByRole('combobox',{name:'Activity Heatmap'}).selectOption('all');
+  await expect.poll(()=>page.locator('.research-3d-stage canvas').getAttribute('data-heatmap-bins')).not.toBe('0');
+  await page.getByRole('checkbox',{name:'Full Track History / Recorded Clip'}).check();
+  await expect.poll(()=>page.locator('video').evaluate(v=>(v as HTMLVideoElement).paused)).toBe(true);
+  await page.getByText('Manual Research Reference / Optional',{exact:true}).click();
+  await page.getByRole('spinbutton',{name:'Known Research Distance'}).fill('3');
+  await page.getByRole('button',{name:'Reference Point A',exact:true}).click();
+  const canvas=page.locator('.research-video-stage canvas'),rect=await canvas.boundingBox();expect(rect).not.toBeNull();
+  await canvas.click({position:{x:rect!.width*.45,y:rect!.height*.6}});
+  await page.getByRole('button',{name:'Reference Point B',exact:true}).click();
+  await canvas.click({position:{x:rect!.width*.55,y:rect!.height*.6}});
+  await expect(page.locator('.research-calibration')).toContainText('approximate metres');
+  await page.getByRole('button',{name:'Clear research reference',exact:true}).click();
+  await expect(page.locator('.research-calibration')).toContainText('Scale: relative');
+});
+
+test('no observations hides research controls and leaves an explicit unavailable segment',async({page})=>{
+  await fixtureApp(page,true,data=>{data.tracks=[];data.events=[];for(const frame of data.frames){frame.subjects=[];}});
+  await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-subjects','0');
+  await expect(page.getByRole('button',{name:'3D Research',exact:true})).toBeDisabled();
+  await expect(page.locator('.research-inspector')).toHaveCount(0);
+  await expect(page.locator('.research-chart')).toHaveCount(0);
+  await expect(page.getByText('Display & Analysis',{exact:true})).toHaveCount(0);
 });

@@ -25,7 +25,8 @@ if(!cached.ok){
   cached=await fetch(`${base}/api/motion/research/analyses/${id}`);
 }
 assert(cached.ok,'Research analysis did not complete');
-const data=researchAnalysisSchema.parse(await cached.json()),masks=data.frames.flatMap(frame=>frame.subjects).filter(subject=>subject.mask.length).length;
+let data=researchAnalysisSchema.parse(await cached.json());
+const masks=data.frames.flatMap(frame=>frame.subjects).filter(subject=>subject.mask.length).length;
 assert.equal(data.video.id,info.id);assert(data.tracks.length>=2,'Current wildlife clip must produce multiple tracks');assert(masks>10,'Real segmentation is required');assert(data.frames.some(frame=>frame.subjects.filter(subject=>subject.worldEstimate).length>=2));
 await mkdir(resolve('test-results'),{recursive:true});
 const browser=await chromium.launch({headless:true}),context=await browser.newContext({viewport:{width:1440,height:1050},acceptDownloads:true});
@@ -40,6 +41,7 @@ try{
   await page.goto(`${base}/research`);await page.waitForFunction(()=>document.querySelector('.research-analysis')?.textContent?.includes('cache hit'));
   if(reanalyze){await page.getByRole('button',{name:'Reanalyze',exact:true}).click();await page.getByRole('button',{name:'Cancel Analysis',exact:true}).waitFor();await page.waitForFunction(()=>!document.querySelector('.research-progress')&&document.querySelector('.research-analysis')?.textContent?.includes('samples /'),undefined,{timeout:300000});assert(!(await page.getByRole('alert').count()),'Fresh real inference must load without errors');}
   assert.equal(await page.getByRole('button',{name:'Split',exact:true}).getAttribute('aria-pressed'),'true');
+  if(reanalyze){data=researchAnalysisSchema.parse(await(await fetch(`${base}/api/motion/research/analyses/${id}`)).json());assert.match(data.sourceHash??'',/^[a-f0-9]{64}$/);}
   const t=Math.min(5,data.video.duration*.4);await seek(t);
   const frame=researchFrameAt(data,t)!;assert(frame.subjects.length>=2);
   const before=await pixels(page,scene),videoPixels=await pixels(page,overlay);assert(before.colored>500);assert(videoPixels.colored>100);assert.equal(before.subjects,frame.subjects.length);
@@ -51,21 +53,38 @@ try{
   const next=Math.min(t+2,data.video.duration-.5);await seek(next);const after=await pixels(page,scene);assert.notEqual(before.hash,after.hash,'3D proxies must move with time');await seek(t);
   await page.getByRole('button',{name:'Next research frame',exact:true}).click();await page.waitForTimeout(150);assert(Math.abs(await page.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime)-(t+1/data.video.fps))<.005);
   await seek(t);await page.getByRole('button',{name:'Play research video',exact:true}).click();await page.waitForTimeout(350);await page.getByRole('button',{name:'Pause research video',exact:true}).click();const live=await page.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime);assert(Math.abs((await pixels(page,scene)).time-live)<.1);assert(Math.abs((await pixels(page,overlay)).time-live)<.1);
-  await seek(t);await page.getByText('Overlays / Trails / Scene',{exact:true}).click();
-  for(const name of ['Masks','3D Ghosts','3D Trajectories','Uncertainty'])assert(await page.getByRole('checkbox',{name,exact:true}).isChecked());
+  await seek(t);await page.getByText('Display & Analysis',{exact:true}).click();
+  for(const name of ['Masks','3D Trajectories','Uncertainty'])assert(await page.getByRole('checkbox',{name,exact:true}).isChecked());
+  assert.equal(await page.locator(scene).getAttribute('data-spatial-mode'),'top');
+  await page.getByRole('combobox',{name:'Activity Heatmap'}).selectOption('all');
+  await page.waitForFunction(()=>Number(document.querySelector<HTMLCanvasElement>('.research-3d-stage canvas')?.dataset.heatmapBins)>0);
+  await page.getByRole('checkbox',{name:'Full Track History / Recorded Clip'}).check();
+  assert(await page.locator('video').evaluate(v=>(v as HTMLVideoElement).paused));
+  await page.getByRole('checkbox',{name:'Full Track History / Recorded Clip'}).uncheck();
+  await page.getByRole('combobox',{name:'Activity Heatmap'}).selectOption('off');
+  await page.getByText('Manual Research Reference / Optional',{exact:true}).click();
+  await page.getByRole('spinbutton',{name:'Known Research Distance'}).fill('2');
+  for(const [name,x] of [['Reference Point A',.42],['Reference Point B',.58]] as const){
+    await page.getByRole('button',{name,exact:true}).click();const rect=(await page.locator(overlay).boundingBox())!;
+    await page.locator(overlay).click({position:{x:rect.width*x,y:rect.height*.57}});
+  }
+  assert((await page.locator('.research-calibration').textContent())?.includes('approximate metres'));
+  await page.getByRole('button',{name:'Clear research reference'}).click();
+  await page.getByText('Manual Research Reference / Optional',{exact:true}).click();
   await page.getByRole('combobox',{name:'Mask Style',exact:true}).selectOption('both');await page.getByRole('checkbox',{name:'3D Labels',exact:true}).check();
   await page.getByRole('button',{name:'Fullscreen research presentation',exact:true}).click();await page.waitForFunction(()=>document.fullscreenElement?.contains(document.querySelector('.research-timeline')));await page.screenshot({path:'test-results/research-real-fullscreen.png'});await page.evaluate(()=>document.exitFullscreen());
   await page.screenshot({path:'test-results/research-real-desktop.png',fullPage:true});
   const report=await capture('report','json');assert.equal(JSON.parse(report.bytes.toString()).id,id);const frames=await capture('frames','json');assert.equal(JSON.parse(frames.bytes.toString()).length,data.frames.length);
-  for(const mode of ['tracks','events'])assert((await capture(mode,'csv')).bytes.toString().includes('time_seconds'));
-  for(const mode of ['video','3d','split']){const output=await capture(mode,'png');assert.equal(output.bytes.subarray(1,4).toString(),'PNG');}
+  assert((await capture('markdown','md')).bytes.toString().includes('## Closest Approaches'));
+  for(const mode of ['tracks','events','pairs'])assert((await capture(mode,'csv')).bytes.toString().includes('time_seconds'));
+  for(const mode of ['video','3d','split','snapshot']){const output=await capture(mode,'png');assert.equal(output.bytes.subarray(1,4).toString(),'PNG');}
   await page.getByRole('combobox',{name:'Research Export'}).selectOption('annotated');await page.getByRole('button',{name:'Export research data'}).click();await page.getByRole('button',{name:'Cancel annotated export'}).click();await page.getByRole('button',{name:'Export research data'}).waitFor({state:'visible'});await page.waitForFunction(()=>!document.querySelector('[aria-label="Cancel annotated export"]'));
   const annotated=await capture('annotated','webm'),probe=JSON.parse(execFileSync(ffprobe.path,['-v','error','-count_frames','-show_streams','-of','json',annotated.path],{encoding:'utf8',windowsHide:true}));assert(probe.streams.some((stream:{codec_type:string;nb_read_frames:string})=>stream.codec_type==='video'&&Number(stream.nb_read_frames)>30));
-  for(const name of ['Subjects','Events','Metrics','Depth','Diagnostics']){await page.getByRole('button',{name:'Data',exact:true}).click();await page.getByRole('tab',{name,exact:true}).click();assert(await page.getByRole('tabpanel',{name,exact:true}).isVisible());}
+  for(const name of ['Subjects','Events','Metrics','Pairs','Depth','Diagnostics']){await page.getByRole('button',{name:'Data',exact:true}).click();await page.getByRole('tab',{name,exact:true}).click();assert(await page.getByRole('tabpanel',{name,exact:true}).isVisible());}
   assert((await page.getByRole('tabpanel',{name:'Diagnostics'}).textContent())?.includes('cached data only'));
-  await page.getByRole('button',{name:'Split',exact:true}).click();await page.getByRole('combobox',{name:'Research camera preset'}).selectOption('Side');await page.waitForTimeout(200);assert((await pixels(page,scene)).colored>500);await page.getByRole('button',{name:'Reset research camera'}).click();
+  await page.getByRole('button',{name:'Split',exact:true}).click();await page.getByRole('combobox',{name:'Spatial View'}).selectOption('3d');await page.getByRole('combobox',{name:'Research camera preset'}).selectOption('Side');await page.waitForTimeout(200);assert((await pixels(page,scene)).colored>500);await page.getByRole('button',{name:'Reset research camera'}).click();await page.waitForTimeout(120);const threeBefore=await pixels(page,scene);await seek(next);assert.notEqual((await pixels(page,scene)).hash,threeBefore.hash,'Estimated 3D subjects must change with observed T');await seek(t);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);await page.screenshot({path:'test-results/research-real-mobile.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert((await pixels(page,scene)).colored>100);assert((await pixels(page,overlay)).colored>100);
   for(const mode of ['Video','3D Research']){await page.getByRole('button',{name:mode,exact:true}).click();await page.waitForTimeout(150);assert((await pixels(page,mode==='Video'?overlay:scene)).colored>100);}
   await page.reload();await page.waitForFunction(()=>document.querySelector('.research-analysis')?.textContent?.includes('cache hit'));assert.equal(inferenceRequests.length,reanalyze?1:0,'Only explicit reanalysis may start inference');assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({source:info.name,frames:data.frames.length,tracks:data.tracks.length,masks,events:data.events.length,device:data.runtime.device,reusedCache:reused,synchronized:true,moving3D:true,mobileNonblank:true,fullscreen:true,exports:8,annotatedVideoDecoded:true,noPlaybackInference:true,privateOutputs:'test-results (ignored)'},null,2));
+  console.log(JSON.stringify({source:info.name,frames:data.frames.length,tracks:data.tracks.length,masks,events:data.events.length,device:data.runtime.device,reusedCache:reused,synchronized:true,moving3D:true,autoTopDown:true,activityHeatmap:true,manualReference:true,mobileNonblank:true,fullscreen:true,exports:11,annotatedVideoDecoded:true,noPlaybackInference:true,privateOutputs:'test-results (ignored)'},null,2));
 }finally{await context.close();await browser.close();}

@@ -1,0 +1,6 @@
+import { researchFrameAt } from '../../../../packages/shared/src/research.js';
+import { depthLevel,spatialAvailability } from '../../../../packages/shared/src/research-metrics.js';
+import { useResearch } from './store.js';
+export function ResearchStatus({time}:{time:number}){const {analysis}=useResearch(),frame=researchFrameAt(analysis,time),subjects=frame?.subjects??[],depths=subjects.filter(s=>s.depthEstimate.value!==null),mode=spatialAvailability(frame);
+  return <div className="research-status" aria-label="Research availability">{Object.entries({'Detection':subjects.length?`${subjects.length} OBSERVED`:'UNAVAILABLE','Segmentation':subjects.length?`${subjects.filter(s=>s.mask.length).length}/${subjects.length} MASKS`:'UNAVAILABLE','Tracking':analysis?.tracks.length?`${analysis.tracks.length} HISTORIES`:'UNAVAILABLE','Depth':depths.length?depthLevel(depths.reduce((sum,s)=>sum+(s.depthEstimate.confidence??0),0)/depths.length):'UNAVAILABLE','Projection':mode.available?mode.mode==='3d'?'ESTIMATED 3D':mode.mode==='top'?'PARTIAL / 2.5D':'IMAGE DIAGRAM':'UNAVAILABLE','Metric Scale':analysis?.refinement?.units==='approximate metres'?'MANUAL / APPROXIMATE':'UNCALIBRATED'}).map(([label,value])=><span key={label}><small>{label}</small><strong>{value}</strong></span>)}</div>;
+}

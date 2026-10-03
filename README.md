@@ -134,7 +134,10 @@ Physical acceptance remains pending in [PHYSICAL_ACCEPTANCE](docs/PHYSICAL_ACCEP
 
 Wildlife videos use [4D Research View](docs/RESEARCH_VIEW.md) at `/research`:
 local animal detection, segmentation, multi-object tracking, relative monocular
-depth, synchronized 3D proxies, interaction metrics and research exports.
+depth, AUTO 2.5D/estimated-3D spatial views, recorded heatmaps, quality-gated
+motion/pair metrics, visible track lanes and scientific exports. Optional manual
+references provide approximate scale only. Missing observations never show an
+empty 3D grid. See the [reality audit](docs/MAX_4D_REALITY_AUDIT.md).
 Run `npm run setup:research` once with Python 3.12; model downloads stay local.
 This is estimated scene analysis, not calibrated volumetric capture.
 

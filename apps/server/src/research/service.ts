@@ -3,8 +3,10 @@ import { createHash } from 'node:crypto';
 import { access,mkdir,readFile,writeFile,rename,unlink } from 'node:fs/promises';
 import { resolve,extname,basename } from 'node:path';
 import { z } from 'zod';
+import { createReadStream } from 'node:fs';
 import { VideoPreparationService } from '../motion/video-service.js';
-import { deriveResearchEvents,rawResearchSchema,researchAnalysisSchema,researchIdentity,RESEARCH_VERSION,type ResearchAnalysis,type ResearchSettings } from '../../../../packages/shared/src/research.js';
+import { rawResearchSchema,researchAnalysisSchema,researchIdentity,RESEARCH_VERSION,type ResearchAnalysis,type ResearchSettings } from '../../../../packages/shared/src/research.js';
+import { refineResearch } from '../../../../packages/shared/src/research-refinement.js';
 
 export interface ResearchJob { id:string;sourceId:string;status:'running'|'complete'|'cancelled'|'error';stage:string;done:number;total:number;subjects:number;error?:string;cacheHit:boolean; }
 const hash=/^[a-f0-9]{64}$/;
@@ -36,6 +38,7 @@ export class ResearchService {
     if(!force){try{const cached=await this.load(id);const job:ResearchJob={id,sourceId,status:'complete',stage:'cached',done:cached.frames.length,total:cached.frames.length,subjects:cached.tracks.length,cacheHit:true};this.jobs.set(id,job);return job;}catch(error){if((error as NodeJS.ErrnoException).code!=='ENOENT')throw new Error('Research cache is invalid. Use Reanalyze to replace it.');}}
     if(!await this.available())throw new Error('Research runtime missing. Run scripts/setup-research.ps1 with Python 3.12.');
     const input=await this.mediaService(key).stream(sourceId);
+    const sourceDigest=createHash('sha256');for await(const bytes of createReadStream(input))sourceDigest.update(bytes);const sourceHash=sourceDigest.digest('hex');
     await mkdir(this.cache,{recursive:true});
     const temporary=resolve(this.cache,`${id}.${crypto.randomUUID()}.worker.json`);
     const job:ResearchJob={id,sourceId,status:'running',stage:'starting local inference',done:0,total:Math.ceil(info.duration*settings.fps),subjects:0,cacheHit:false};this.jobs.set(id,job);
@@ -54,12 +57,12 @@ export class ResearchService {
         const current=await this.mediaInfo(key);if(current.id!==sourceId)throw new Error('Source changed during analysis. Results were not cached.');
         const raw=rawResearchSchema.parse(JSON.parse(await readFile(temporary,'utf8')));
         const warnings=['Relative monocular depth and assumed ground/camera; not calibrated metric geometry.','Species scores, tracking, mask quality and event confidence are not calibrated probabilities.','ByteTrack can switch IDs after long occlusion, camera movement or scene edits.','Motion heading is not confirmed animal facing; proxies are inferred volumes, not anatomy.'];
-        const base={...raw,schemaVersion:1 as const,pipelineVersion:RESEARCH_VERSION,id,video:info,settings,warnings};
-        const events=deriveResearchEvents(base);
-        const data=researchAnalysisSchema.parse({...base,events,frames:raw.frames.map(frame=>({...frame,events:events.filter(event=>Math.abs(event.time-frame.time)<.001)}))});
+        const base={...raw,schemaVersion:1 as const,pipelineVersion:RESEARCH_VERSION,id,sourceHash,video:info,settings,warnings};
+        const data=researchAnalysisSchema.parse(refineResearch(researchAnalysisSchema.parse({...base,events:[]})));
+        if(job.status!=='running')return;
         const pending=resolve(this.cache,`${id}.tmp.json`);await writeFile(pending,JSON.stringify(data));await rename(pending,resolve(this.cache,`${id}.json`));
         job.status='complete';job.stage=data.tracks.length?'complete':'complete / no reliable animals';job.done=data.frames.length;job.total=data.frames.length;job.subjects=data.tracks.length;
-      }catch(error){job.status='error';job.error=error instanceof Error?error.message:'Research cache could not be written.';}
+      }catch(error){if(job.status!=='cancelled'){job.status='error';job.error=error instanceof Error?error.message:'Research cache could not be written.';}}
       finally{await unlink(temporary).catch(()=>undefined);if(this.active?.id===id)this.active=null;}
     })();});
     return job;
