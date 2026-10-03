@@ -59,3 +59,20 @@ prerequisites for the webcam version.
 One local host; no cloud/paid APIs/native iOS/ARKit/LiDAR. Direct LAN WebRTC frames,
 local vision worker, explicit approximate calibration, DTO-only project data,
 independent snapshots, temporal identity matching and atomic local files.
+
+## Wildlife Research Extension
+
+The current wildlife recording uses a separate `/research` workspace; it does
+not replace webcam-first planning, Cube Lab or human Motion Lab.
+
+| Phase | Deliverable | State |
+| --- | --- | --- |
+| A | Existing-system and current-media audit | Human-only schema kept separate |
+| B | Local detection, masks, tracking, depth | Pinned DINO/SAM 2/ByteTrack/Depth Anything pipeline |
+| C | Assumed scene, body proxies, history | Relative scale, motion heading, gaps and uncertainty explicit |
+| D | Synchronized research UI | Split/video/3D/data, timeline, pair metrics, cautious events |
+| E | Research exports and cache | Source/version/settings bound; JSON/CSV/PNG/silent WebM |
+| F | Verification | Unit/browser/production regressions plus actual-clip integration |
+
+See docs/RESEARCH_VIEW.md for installation, current real-model evidence and
+remaining scientific limitations. Private media/models/derived data stay ignored.

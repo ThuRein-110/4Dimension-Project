@@ -236,3 +236,35 @@ Lint, typecheck, 52 unit tests, 41 browser tests, build and compiled-production 
 startup/stop/isolation smoke pass. Cube/marker/calibration/furniture/layout/timeline
 logic is unchanged. Details and the real-hardware command are in
 [WEBCAM_NATIVE_TIMEOUT](WEBCAM_NATIVE_TIMEOUT.md).
+
+## Wildlife Research View
+
+2026-10-03: added `/research` inside the existing shell without replacing camera,
+room planning, Cube Lab or the human Motion Lab. Local, pinned Grounding DINO,
+SAM 2, ByteTrack and Depth Anything V2 inference generates source-bound animal
+tracks, real mask contours and relative depth. Interactive playback reads only
+the validated cache, with the source video as the single master clock.
+
+Split/video/3D/data views include colored observations, motion arrows, actual
+history, ghosts, ellipsoid/head proxies, uncertainty, assumed ground/camera,
+recent-event indicators, a collapsible inspector, interval pair metrics, heuristic
+event/subject tables and confidence/separation charts. Exports cover report and
+frame JSON, track/event CSV, three PNG views and silent annotated WebM. Local
+import, cancellation, changed-source resets and invalid caches are handled.
+
+Validation: lint, strict typecheck, 80 unit tests, all 49 browser tests, build and
+compiled-production smoke pass. The actual local wildlife recording was analyzed
+twice with real CUDA models, producing 75 samples, seven track histories, 206
+masks and 77 event hypotheses. The production UI's fresh reanalysis/completion,
+synchronized moving/nonblank desktop/mobile canvases, fullscreen, selection,
+pairwise metrics, eight exports, decoded annotated WebM, export cancellation and
+cache-only reload all passed. A completion-effect race discovered in CI was fixed
+and covered by the final browser regression run.
+
+These are inferred monocular scene units, not calibrated meters or volumetric
+capture. Track histories are not a certified unique-animal count. The central
+animal remains `animal_unknown` where the model is uncertain; surrounding
+hyena/canine labels are hypotheses. Heading means estimated motion, not facing;
+long occlusions/camera edits can switch IDs. The original recording's bytes,
+size and mtime are unchanged. Media, weights, masks, reports and visual test
+evidence remain local and ignored. See [RESEARCH_VIEW](RESEARCH_VIEW.md).

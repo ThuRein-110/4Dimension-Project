@@ -1,0 +1,6 @@
+transformers==4.57.1
+supervision==0.27.0
+opencv-python==4.11.0.86
+numpy==2.2.6
+Pillow==11.3.0
+scipy==1.16.2

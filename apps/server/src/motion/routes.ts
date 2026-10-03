@@ -4,6 +4,8 @@ import { mkdir, access, writeFile, rename, unlink, readFile } from 'node:fs/prom
 import { isLoopback } from '../network.js';
 import { VideoPreparationService } from './video-service.js';
 import { analysisSchema,analysisIdentity } from '../../../../packages/shared/src/motion.js';
+import { ResearchService } from '../research/service.js';
+import { researchRoutes } from '../research/routes.js';
 
 export function motionRoutes(service = new VideoPreparationService(), analysisRoot = resolve('.cache/4dlivespace/motion')) {
   const router = express.Router();
@@ -21,6 +23,7 @@ export function motionRoutes(service = new VideoPreparationService(), analysisRo
     try { res.json(await service.info()); }
     catch (error) { res.status(422).json({ error: error instanceof Error ? error.message : 'Video unavailable.' }); }
   });
+  router.use('/research',researchRoutes(new ResearchService(service)));
   router.get('/demo/stream', async (req, res) => {
     try {
       if (typeof req.query.id !== 'string' || !/^[a-f0-9]{64}$/.test(req.query.id)) { res.sendStatus(400); return; }

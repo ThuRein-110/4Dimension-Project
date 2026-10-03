@@ -132,6 +132,12 @@ Physical acceptance remains pending in [PHYSICAL_ACCEPTANCE](docs/PHYSICAL_ACCEP
 
 ## Documentation And Limitations
 
+Wildlife videos use [4D Research View](docs/RESEARCH_VIEW.md) at `/research`:
+local animal detection, segmentation, multi-object tracking, relative monocular
+depth, synchronized 3D proxies, interaction metrics and research exports.
+Run `npm run setup:research` once with Python 3.12; model downloads stay local.
+This is estimated scene analysis, not calibrated volumetric capture.
+
 Motion Lab defaults to [4D Video View](docs/MOTION_VIDEO_VIEW.md): synchronized
 pose/depth, real trails/ghosts, clickable XYZT, freeze/composites and fullscreen
 with timeline. Existing pose caches are reused; original recordings remain local.

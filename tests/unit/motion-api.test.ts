@@ -19,6 +19,8 @@ it('guards private routes, serves ranges and validates atomic analysis cache wri
   const base=`http://127.0.0.1:${address.port}/api/motion`;
   try {
     expect((await fetch(`${base}/demo/info`,{headers:{Origin:'https://foreign.example'}})).status).toBe(403);
+    expect((await fetch(`${base}/research/runtime`,{headers:{Origin:'https://foreign.example'}})).status).toBe(403);
+    expect((await fetch(`${base}/research/jobs`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status).toBe(403);
     const foreignHost=await new Promise<number|undefined>((resolve,reject)=>{const req=request(`${base}/demo/info`,{headers:{Host:'foreign.example'}},res=>{res.resume();resolve(res.statusCode);});req.on('error',reject);req.end();});
     expect(foreignHost).toBe(403);
     expect((await fetch(`${base}/demo/stream?id=../../package.json`)).status).toBe(400);

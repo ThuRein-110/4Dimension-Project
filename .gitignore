@@ -11,3 +11,5 @@ playwright-report/
 /*.[mM]4[vV]
 /*.[wW][eE][bB][mM]
 .cache/
+__pycache__/
+*.pyc
