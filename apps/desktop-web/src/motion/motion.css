@@ -37,6 +37,19 @@
 .motion-3d-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .view-video { grid-template-columns: minmax(0,1fr); }
 .view-video > section:nth-child(2) { display: none; }
+.view-4d, .view-data { grid-template-columns: minmax(0,1fr); }
+.view-4d > section:nth-child(2), .view-video > section:nth-child(2), .view-data > section:nth-child(2) { position: absolute; width: min(100%,700px); left: -10000px; visibility: hidden; }
+.mode-data .motion-views { position: absolute; width: min(100%,700px); left: -10000px; visibility: hidden; }
+.motion-overlay-actions { display: flex; gap: 6px; }
+.motion-pose-overlay { touch-action: none; }
+.motion-accessible-info { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.motion-keyframe-ticks { position: relative; height: 18px; margin: 0 12px; }
+.motion-keyframe-ticks button { position: absolute; transform: translateX(-50%); width: 16px; height: 18px; padding: 0; background: transparent; border: 0; }
+.motion-keyframe-ticks span { display: block; width: 2px; height: 14px; background: #f9ba68; margin: auto; }
+.motion-presentation:fullscreen { width: 100vw; height: 100vh; overflow: auto; background: #111318; padding: 12px; display: flex; flex-direction: column; }
+.motion-presentation:fullscreen .motion-views { flex: 1; min-height: 260px; }
+.motion-presentation:fullscreen .motion-video-stage, .motion-presentation:fullscreen .motion-3d-stage { height: calc(100vh - 240px); }
+.motion-presentation:fullscreen .motion-timeline { flex-shrink: 0; }
 .view-3d > section:first-child { position: absolute; width: min(100%,700px); left: -10000px; visibility: hidden; }
 .view-3d { grid-template-columns: minmax(0,1fr); }
 .view-3d > section:nth-child(2) { grid-column: 1; }

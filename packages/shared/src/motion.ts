@@ -11,9 +11,14 @@ const landmarks = z.array(landmarkSchema).max(33).refine(points => points.every(
 export const sampleSchema = z.object({ timeSeconds: finite.min(0), frameIndex: z.number().int().min(0), landmarks2D: landmarks, worldLandmarks: landmarks.optional(), poseConfidence: finite.min(0).max(1), valid: z.boolean(), inferenceMs: finite.min(0) }).refine(sample => !sample.valid || sample.landmarks2D.length === 33, 'Valid pose requires all 33 landmarks');
 export type MotionPoseSample = z.infer<typeof sampleSchema>;
 export const keyframeSchema = z.object({ id: z.string().uuid(), name: z.string().trim().min(1).max(80), timeSeconds: finite.min(0) });
-export const displaySchema = z.object({ skeleton: z.boolean(), landmarks: z.boolean(), labels: z.boolean(), confidence: z.boolean(), trails: z.boolean(), trailWindow: finite.min(0).max(10), future: z.boolean(), ghosts: z.boolean(), ghostCount: z.number().int().min(1).max(8), ghostInterval: finite.min(.05).max(2), fit: z.enum(['contain','cover']), selectedJoint: z.number().int().min(0).max(33), floor: z.boolean(), view: z.enum(['split','video','3d','ghost','trajectory','data']) });
+const displayFields = z.object({ skeleton: z.boolean(), landmarks: z.boolean(), labels: z.boolean(), confidence: z.boolean(), trails: z.boolean(), trailWindow: finite.min(0).max(10), future: z.boolean(), ghosts: z.boolean(), ghostCount: z.number().int().min(1).max(8), ghostInterval: finite.min(.05).max(2), fit: z.enum(['contain','cover']), selectedJoint: z.number().int().min(0).max(33), floor: z.boolean(), view: z.enum(['4d','split','video','3d','ghost','trajectory','data']), visualizationVersion: z.literal(2).default(2), depth: z.boolean().default(true), axes: z.boolean().default(false), composite: z.boolean().default(false), keyframePoses: z.boolean().default(false), timeDots: z.boolean().default(false), trailJoint: z.enum(['left','right','wrists','elbows','head','hips']).default('wrists') });
+// Upgrade display preferences only. Pose timestamps, cache identity and annotations are unchanged.
+export const displaySchema = z.preprocess(value => {
+  if (value && typeof value === 'object' && !('visualizationVersion' in value)) return { ...value, view: '4d', ghosts: true, ghostCount: 4, ghostInterval: .15, trailWindow: 0 };
+  return value;
+}, displayFields);
 export type MotionDisplay = z.infer<typeof displaySchema>;
-export const defaultDisplay: MotionDisplay = { skeleton: true, landmarks: true, labels: false, confidence: false, trails: true, trailWindow: 1, future: false, ghosts: false, ghostCount: 3, ghostInterval: .2, fit: 'contain', selectedJoint: 16, floor: true, view: 'split' };
+export const defaultDisplay: MotionDisplay = displaySchema.parse({ skeleton: true, landmarks: true, labels: false, confidence: false, trails: true, trailWindow: 0, future: false, ghosts: true, ghostCount: 4, ghostInterval: .15, fit: 'contain', selectedJoint: 16, floor: true, view: '4d', visualizationVersion: 2 });
 export const analysisSchema = z.object({
   schemaVersion: z.literal(1), id: z.string().regex(/^[a-f0-9]{64}$/),
   video: z.object({ id: z.string().min(1).max(512), name: z.string().max(256), duration: finite.positive().max(7200), width: finite.positive(), height: finite.positive(), fps: finite.positive(), size: finite.min(0), mtimeMs: finite.min(0), codec: z.string(), rotation: finite }),

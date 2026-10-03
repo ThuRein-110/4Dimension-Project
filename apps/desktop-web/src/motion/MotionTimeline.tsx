@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronFirst, ChevronLast, Pause, Play, Plus, SkipBack, SkipForward, X } from 'lucide-react';
+import { ChevronFirst, ChevronLast, Pause, Play, Plus, SkipBack, SkipForward, Snowflake, X } from 'lucide-react';
 import { motion, useMotion } from './store.js';
 
 export function MotionTimeline({ video, time, playing }: { video: HTMLVideoElement | null; time: number; playing: boolean }) {
@@ -10,6 +10,7 @@ export function MotionTimeline({ video, time, playing }: { video: HTMLVideoEleme
   const next = analysis?.keyframes.find(frame => frame.timeSeconds > time+.001);
   const blocked = !duration || status === 'analyzing';
   return <section className="motion-timeline" aria-label="Motion timeline">
+    <div className="motion-keyframe-ticks">{analysis?.keyframes.map(frame=><button key={frame.id} title={`${frame.name} / ${frame.timeSeconds.toFixed(3)} s`} aria-label={`Seek ${frame.name} at ${frame.timeSeconds.toFixed(3)} s`} style={{left:`${duration?frame.timeSeconds/duration*100:0}%`}} onClick={()=>seek(frame.timeSeconds)}><span/></button>)}</div>
     <input aria-label="Motion time" type="range" min="0" max={duration} step="0.001" value={time} disabled={blocked} onInput={event => seek(Number(event.currentTarget.value))} />
     <div className="motion-transport">
       <button title="Previous keyframe" aria-label="Previous keyframe" disabled={blocked || !previous} onClick={() => seek(previous!.timeSeconds)}><ChevronFirst size={18} /></button>
@@ -18,6 +19,7 @@ export function MotionTimeline({ video, time, playing }: { video: HTMLVideoEleme
       <button title="Next frame" aria-label="Next frame" disabled={blocked} onClick={() => seek(time+1/(metadata?.fps || 30))}><SkipForward size={18} /></button>
       <button title="Next keyframe" aria-label="Next keyframe" disabled={blocked || !next} onClick={() => seek(next!.timeSeconds)}><ChevronLast size={18} /></button>
       <output>{time.toFixed(2)} / {duration.toFixed(2)} s</output>
+      <button disabled={blocked} onClick={()=>{video?.pause();motion.settings({skeleton:true,trails:true,trailWindow:0,ghosts:true,future:false});}}><Snowflake size={16}/>Freeze Motion</button>
       <label>Speed <select aria-label="Playback speed" defaultValue="1" onChange={event => { if (video) video.playbackRate = Number(event.target.value); }}>{[.25,.5,1,1.5,2].map(speed => <option key={speed} value={speed}>{speed}x</option>)}</select></label>
       <label>Keyframe <select aria-label="Keyframe name" value={name} onChange={event => setName(event.target.value)}>{['Address','Backswing','Top','Downswing','Impact','Follow-through'].map(value => <option key={value}>{value}</option>)}</select></label>
       <button disabled={!analysis || blocked || analysis.keyframes.length >= 100} onClick={() => { if (analysis) motion.set({ analysis: { ...analysis,keyframes: [...analysis.keyframes,{ id: crypto.randomUUID(),name,timeSeconds: video?.currentTime ?? time }].sort((a,b) => a.timeSeconds-b.timeSeconds) } }); }}><Plus size={15} />Add Keyframe</button>

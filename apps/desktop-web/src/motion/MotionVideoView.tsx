@@ -1,72 +1,47 @@
 import { useEffect, useRef } from 'react';
-import { Expand } from 'lucide-react';
-import { contentRect } from '../../../../packages/three-engine/src/CameraProjectionManager.js';
-import { CONNECTIONS, jointAt, sampleAt, type MotionPoseSample } from '../../../../packages/shared/src/motion.js';
+import { Expand, Eye, EyeOff } from 'lucide-react';
+import { MotionProjectionService } from './MotionProjectionService.js';
+import { renderMotionOverlay, type OverlayFrame, type OverlaySelection } from './MotionOverlayRenderer.js';
 import { motion, useMotion } from './store.js';
 
-export function MotionVideoView({ url, video, setVideo, onMetadata, onTime, onPlaying, clubMode }: {
-  url: string; video: HTMLVideoElement | null; setVideo: (value: HTMLVideoElement | null) => void;
-  onMetadata: (media: HTMLVideoElement) => void; onTime: (time: number) => void; onPlaying: (playing: boolean) => void; clubMode: boolean;
+export const overlaySelection:OverlaySelection={joint:16,time:null,hidden:false,offset:{x:0,y:0}};
+export function MotionVideoView({ url, video, setVideo, onMetadata, onTime, onPlaying, clubMode, onFullscreen }: {
+  url:string;video:HTMLVideoElement|null;setVideo:(value:HTMLVideoElement|null)=>void;
+  onMetadata:(media:HTMLVideoElement)=>void;onTime:(time:number)=>void;onPlaying:(playing:boolean)=>void;clubMode:boolean;onFullscreen:()=>void;
 }) {
-  const canvas = useRef<HTMLCanvasElement>(null), stage = useRef<HTMLDivElement>(null);
-  const { display } = useMotion();
-  useEffect(() => {
-    if (!video || !canvas.current) return;
-    const overlay = canvas.current, context = overlay.getContext('2d')!;
-    let frame = 0;
-    const draw = () => {
-      const width = overlay.clientWidth, height = overlay.clientHeight;
-      if (overlay.width !== Math.round(width * devicePixelRatio) || overlay.height !== Math.round(height * devicePixelRatio)) { overlay.width = Math.round(width * devicePixelRatio); overlay.height = Math.round(height * devicePixelRatio); }
-      context.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); context.clearRect(0,0,width,height);
-      const state = motion.get(), data = state.analysis, options = state.display;
-      const time = video.currentTime, rect = contentRect(width,height,video.videoWidth,video.videoHeight,options.fit);
-      const sample = data && sampleAt(data.samples,time);
-      const skeleton = (pose: MotionPoseSample | null, opacity = 1) => {
-        if (!pose?.valid) return;
-        context.globalAlpha = opacity; context.lineWidth = 2; context.strokeStyle = '#6ee7b7';
-        if (options.skeleton) for (const [a,b] of CONNECTIONS) {
-          const p = jointAt(pose,a,false), q = jointAt(pose,b,false); if (!p || !q) continue;
-          context.beginPath(); context.moveTo(rect.x+p.x*rect.width,rect.y+p.y*rect.height); context.lineTo(rect.x+q.x*rect.width,rect.y+q.y*rect.height); context.stroke();
-        }
-        for (const point of pose.landmarks2D) {
-          if (point.visibility < .35) continue;
-          const x = rect.x+point.x*rect.width, y = rect.y+point.y*rect.height;
-          if (options.landmarks) { context.fillStyle = point.id % 2 ? '#f9ba68' : '#7fc5ff'; context.beginPath(); context.arc(x,y,3,0,Math.PI*2); context.fill(); }
-          if (options.labels || options.confidence) { context.font = '10px sans-serif'; context.fillStyle = '#ffffff'; context.fillText(`${options.labels ? point.name : ''}${options.confidence ? ` ${(point.visibility*100).toFixed(0)}%` : ''}`,x+5,y-4); }
-        }
-        context.globalAlpha = 1;
-      };
-      if (data && options.ghosts) for (let i = options.ghostCount; i > 0; i--) { const t = time-i*options.ghostInterval; if (t >= 0) skeleton(sampleAt(data.samples,t),.12 + .2/i); }
-      if (data && options.trails) for (const id of new Set([15,16,options.selectedJoint])) {
-        context.strokeStyle = id === 15 ? '#f9ba68' : '#7fc5ff'; context.lineWidth = 2; context.beginPath(); let drawing = false;
-        for (const pose of data.samples) {
-          if ((!options.future && pose.timeSeconds > time) || (options.trailWindow && pose.timeSeconds < time-options.trailWindow)) continue;
-          const point = jointAt(pose,id,false); if (!point) { drawing = false; continue; }
-          const x = rect.x+point.x*rect.width, y = rect.y+point.y*rect.height;
-          if (drawing) context.lineTo(x,y); else context.moveTo(x,y); drawing = true;
-        } context.stroke();
+  const canvas=useRef<HTMLCanvasElement>(null),rendered=useRef<OverlayFrame|null>(null),status=useRef<HTMLOutputElement>(null);
+  const drag=useRef<{x:number;y:number;offset:{x:number;y:number}}|null>(null);
+  const {display,metadata}=useMotion();
+  useEffect(()=>{overlaySelection.time=null;overlaySelection.offset={x:0,y:0};},[metadata?.id]);
+  useEffect(()=>{
+    if(!video||!canvas.current)return;
+    const overlay=canvas.current,context=overlay.getContext('2d')!;let frame=0,lastStatus=0;
+    const draw=(now:number)=>{
+      const width=overlay.clientWidth,height=overlay.clientHeight;
+      if(width&&height&&video.videoWidth){
+        const ratio=devicePixelRatio;
+        if(overlay.width!==Math.round(width*ratio)||overlay.height!==Math.round(height*ratio)){overlay.width=Math.round(width*ratio);overlay.height=Math.round(height*ratio);}
+        context.setTransform(ratio,0,0,ratio,0,0);
+        const state=motion.get();if(overlaySelection.joint!==state.display.selectedJoint){overlaySelection.joint=state.display.selectedJoint;overlaySelection.time=null;}
+        rendered.current=renderMotionOverlay(context,new MotionProjectionService(width,height,video.videoWidth,video.videoHeight,state.display.fit),state.analysis,state.display,video.currentTime,overlaySelection);
+        overlay.dataset.sampleTime=String(video.currentTime);overlay.dataset.poseVisible=String(rendered.current.poseVisible);overlay.dataset.card=JSON.stringify(rendered.current.card);overlay.dataset.selectedTime=String(overlaySelection.time ?? video.currentTime);
+        if(now-lastStatus>100&&status.current){status.current.textContent=rendered.current.information;lastStatus=now;}
       }
-      skeleton(sample || null);
-      if (data && !sample) { context.font = '12px sans-serif'; context.fillStyle = '#e5e8ef'; context.fillText('Pose unavailable at this time',12,22); }
-      if (data?.club.length) {
-        context.strokeStyle = '#ff7f9e'; context.fillStyle = '#ff7f9e'; context.beginPath();
-        data.club.filter(point => options.future || point.timeSeconds <= time).forEach((point,i) => { const x = rect.x+point.x*rect.width, y = rect.y+point.y*rect.height; if (!i) context.moveTo(x,y); else context.lineTo(x,y); }); context.stroke();
-        for (const point of data.club.filter(point => Math.abs(point.timeSeconds-time) < .04)) { context.beginPath(); context.arc(rect.x+point.x*rect.width,rect.y+point.y*rect.height,5,0,Math.PI*2); context.fill(); }
-      }
-      frame = requestAnimationFrame(draw);
+      frame=requestAnimationFrame(draw);
     };
-    draw(); return () => cancelAnimationFrame(frame);
-  }, [video]);
-  return <section className="motion-view"><header><strong>Source Video + 2D Pose</strong><button title="Fullscreen source" aria-label="Fullscreen source" onClick={() => void stage.current?.requestFullscreen().catch(error => motion.set({ error: error.message }))}><Expand size={16} /></button></header><div ref={stage} className={`motion-video-stage ${clubMode ? 'club-annotating' : ''}`}>
-    <video ref={setVideo} src={url || undefined} muted playsInline preload="auto" style={{ objectFit: display.fit }} onLoadedMetadata={event => onMetadata(event.currentTarget)} onTimeUpdate={event => onTime(event.currentTarget.currentTime)} onSeeked={event => onTime(event.currentTarget.currentTime)} onPlay={() => onPlaying(true)} onPause={() => onPlaying(false)} onError={() => motion.set({ error: 'Video decoding failed. Use an H.264 MP4 for Local Media, or place the source in the repository root for automatic preparation.' })} />
-    <canvas ref={canvas} className="motion-pose-overlay" aria-label="2D pose overlay" onClick={event => {
-      if (!clubMode || !video || !video.paused) return;
-      const state = motion.get(); if (!state.analysis) return;
-      const bounds = event.currentTarget.getBoundingClientRect(), rect = contentRect(bounds.width,bounds.height,video.videoWidth,video.videoHeight,state.display.fit);
-      const x = (event.clientX-bounds.x-rect.x)/rect.width, y = (event.clientY-bounds.y-rect.y)/rect.height;
-      if (x < 0 || x > 1 || y < 0 || y > 1) return;
-      const club = [...state.analysis.club.filter(point => Math.abs(point.timeSeconds-video.currentTime) > .001),{ timeSeconds: video.currentTime,x,y }].sort((a,b) => a.timeSeconds-b.timeSeconds);
-      motion.set({ analysis: { ...state.analysis,club } });
-    }} />
+    frame=requestAnimationFrame(draw);return()=>cancelAnimationFrame(frame);
+  },[video]);
+  return <section className="motion-view"><header><strong>4D Video View</strong><div className="motion-overlay-actions"><button title="Show joint information" aria-label="Show joint information" onClick={()=>{overlaySelection.hidden=false;overlaySelection.time=null;}}><Eye size={16}/></button><button title="Hide joint information" aria-label="Hide joint information" onClick={()=>{overlaySelection.hidden=true;}}><EyeOff size={16}/></button><button title="Fullscreen 4D Video" aria-label="Fullscreen 4D Video" onClick={onFullscreen}><Expand size={16}/></button></div></header><div className={`motion-video-stage ${clubMode?'club-annotating':''}`}>
+    <video ref={setVideo} src={url||undefined} muted playsInline preload="auto" style={{objectFit:display.fit}} onLoadedMetadata={event=>onMetadata(event.currentTarget)} onTimeUpdate={event=>onTime(event.currentTarget.currentTime)} onSeeked={event=>{overlaySelection.time=null;onTime(event.currentTarget.currentTime);}} onPlay={()=>{overlaySelection.time=null;onPlaying(true);}} onPause={()=>onPlaying(false)} onError={()=>motion.set({error:'Video decoding failed. Use an H.264 MP4 or the prepared root video.'})}/>
+    <canvas ref={canvas} className="motion-pose-overlay" aria-label="2D pose overlay" onPointerDown={event=>{
+      if(!video)return;const bounds=event.currentTarget.getBoundingClientRect(),x=event.clientX-bounds.x,y=event.clientY-bounds.y;
+      const state=motion.get();if(!state.analysis)return;
+      if(clubMode){if(!video.paused)return;const p=new MotionProjectionService(bounds.width,bounds.height,video.videoWidth,video.videoHeight,state.display.fit).inverse({x,y});if(!p)return;const club=[...state.analysis.club.filter(point=>Math.abs(point.timeSeconds-video.currentTime)>.001),{timeSeconds:video.currentTime,...p}].sort((a,b)=>a.timeSeconds-b.timeSeconds);motion.set({analysis:{...state.analysis,club}});return;}
+      const card=rendered.current?.card;
+      if(card&&x>=card.x&&x<=card.x+card.width&&y>=card.y&&y<=card.y+card.height){drag.current={x:event.clientX,y:event.clientY,offset:{...overlaySelection.offset}};event.currentTarget.setPointerCapture(event.pointerId);return;}
+      const hit=rendered.current?.hits.reduce<{distance:number;hit:OverlayFrame['hits'][number]}|null>((best,hit)=>{const distance=Math.hypot(hit.x-x,hit.y-y);return distance<=12&&(!best||distance<=best.distance)?{distance,hit}:best;},null)?.hit;
+      if(hit){motion.settings({selectedJoint:hit.joint});overlaySelection.joint=hit.joint;overlaySelection.time=hit.time;overlaySelection.hidden=false;overlaySelection.offset={x:0,y:0};}
+    }} onPointerMove={event=>{if(!drag.current)return;overlaySelection.offset={x:Math.max(-1,Math.min(1,drag.current.offset.x+(event.clientX-drag.current.x)/event.currentTarget.clientWidth)),y:Math.max(-1,Math.min(1,drag.current.offset.y+(event.clientY-drag.current.y)/event.currentTarget.clientHeight))};}} onPointerUp={()=>{drag.current=null;}} onPointerCancel={()=>{drag.current=null;}}/>
+    <output ref={status} className="motion-accessible-info" aria-label="Selected video joint"/>
   </div></section>;
 }

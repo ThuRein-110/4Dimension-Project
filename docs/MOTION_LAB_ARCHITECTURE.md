@@ -100,6 +100,13 @@ All screenshots/data remain local; Git ignores root videos and generated caches.
 
 ## Rendering
 
+4D Video is now the primary view. MotionProjectionService centralizes image
+projection and temporal selection; MotionOverlayRenderer shares live/export
+rendering with cached joint tracks, real ghosts, depth vectors, historical-point
+selection and bounded draggable cards. Legacy display settings migrate without
+changing inference/cache identity. The fullscreen presentation owns the video
+and timeline together. See [4D Video details](MOTION_VIDEO_VIEW.md).
+
 MotionSkeletonRenderer owns shared sphere geometry, joint materials and reusable
 bone buffers. Motion3DView owns camera/OrbitControls, reference grid/axes, bounded
 ghost groups and trail buffers. ResizeObserver sizes the canvas; WebGL failures

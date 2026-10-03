@@ -132,6 +132,10 @@ Physical acceptance remains pending in [PHYSICAL_ACCEPTANCE](docs/PHYSICAL_ACCEP
 
 ## Documentation And Limitations
 
+Motion Lab defaults to [4D Video View](docs/MOTION_VIDEO_VIEW.md): synchronized
+pose/depth, real trails/ghosts, clickable XYZT, freeze/composites and fullscreen
+with timeline. Existing pose caches are reused; original recordings remain local.
+
 [User guide](docs/USER_GUIDE.md), [installation](docs/INSTALLATION.md),
 [architecture](docs/ARCHITECTURE.md), [requirements](docs/SRS.md),
 [design](docs/DDS.md), [test plan](docs/TEST_PLAN.md),
