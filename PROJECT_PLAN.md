@@ -92,3 +92,10 @@ whole-clip occupancy by default, explicit current/past/full-recorded modes,
 correct projected motion heading, synchronized map selection, pair proximity
 density and observed-history context during missing-current segments.
 Implementation and limits: docs/SPATIAL_MOTION_VIEW.md.
+
+2026-10-04 visualization-only pass: Gaussian occupancy with raw-bin exports,
+shared analysis ranges/recent windows, fading focused trails and real timestamps,
+separate quality legend, manual notes/bookmarks, graph seeking, compact
+presentation/fullscreen and optional local H.264 conversion with WebM fallback.
+Core v2 tracking, segmentation, depth, events and cached data stay unchanged.
+Implementation details and acceptance evidence: docs/RESEARCH_VISUAL_AUDIT.md.

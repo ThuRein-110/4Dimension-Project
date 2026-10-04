@@ -1,0 +1,11 @@
+import { research,useResearch } from './store.js';
+export function ResearchVisualControls(){const {analysis,options,selected}=useResearch();if(!analysis?.tracks.length)return null;return <details className="research-visual-controls"><summary>Visual Refinement</summary><div className="research-options">
+  <label>Density Smoothing <select aria-label="Density Smoothing" value={options.densitySmoothing??'medium'} onChange={e=>research.options({densitySmoothing:e.target.value as 'low'|'medium'|'high'})}>{['low','medium','high'].map(v=><option key={v}>{v}</option>)}</select></label>
+  <label>Density Opacity <input aria-label="Density Opacity" type="range" min=".1" max=".8" step=".05" value={options.densityOpacity??.5} onChange={e=>research.options({densityOpacity:Number(e.target.value)})}/></label>
+  <label>Temporal Window <select aria-label="Temporal Window" value={options.temporalWindow??0} onChange={e=>{const value=Number(e.target.value);research.options({temporalWindow:value,heatmapScope:value?'recent':'clip'});}}>{[0,.5,1,2,5].map(v=><option key={v} value={v}>{v?v+' s':'Full'}</option>)}</select></label>
+  <label>Trails <select aria-label="Trail Subject Filter" value={options.trailFocus??'nearby'} onChange={e=>research.options({trailFocus:e.target.value as 'selected'|'nearby'|'all'})}><option value="selected">Selected Only</option><option value="nearby">Selected + Nearby</option><option value="all">All</option></select></label>
+  <label>Viewport <select aria-label="Spatial Viewport" value={options.viewport??'full'} onChange={e=>research.options({viewport:e.target.value as 'full'|'selected'|'active'})}><option value="full">Full Recorded Path</option><option value="selected">Selected Track</option><option value="active">Auto Fit Active</option></select></label>
+  <label><input type="checkbox" checked={options.timeMarkers??true} onChange={e=>research.options({timeMarkers:e.target.checked})}/>Trajectory Time Markers</label>
+  <label><input type="checkbox" checked={options.centroid??false} onChange={e=>research.options({centroid:e.target.checked})}/>Group Centroid / Geometric</label>
+  <button disabled={selected===null} onClick={()=>research.options({heatmap:'selected'})}>Focus Heatmap on Selected</button>
+</div></details>;}

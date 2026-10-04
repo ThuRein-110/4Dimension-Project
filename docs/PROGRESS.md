@@ -342,3 +342,19 @@ T=0, full-recorded mode, desktop and mobile were visually inspected.
 Scientific limits and weighting are in [SPATIAL_MOTION_VIEW](SPATIAL_MOTION_VIEW.md).
 No new inference or synthetic animal motion was added; the existing validated
 local v2 cache is reused. Video/models/derived evidence remain ignored and local.
+
+## Research Visual And Temporal Refinement
+
+2026-10-04: upgraded the existing viewer with Gaussian occupancy, shared ranges,
+recent windows, age/width trails, timestamp/focus/viewport controls, separated
+quality legend, graph seeking and source-bound manual notes/bookmarks. Clean
+presentation/fullscreen fits 1920x1080, with optional inspector. Added presentation
+and density PNG, raw-bin CSV and guarded local H.264 conversion/WebM fallback.
+All core analysis algorithms and the existing v2 cache remain unchanged.
+
+Validation: 101 unit tests, nine Research browser tests, lint/typecheck/build,
+production smoke, and real wildlife integration in dev/compiled production
+passed. All 15 exports were checked, including decoded WebM/H.264. Full-suite
+moving-marker Cube Lab recording still fails its zero-sample store assertion;
+that separate path was not edited. Detailed evidence and limits:
+[RESEARCH_VISUAL_AUDIT](RESEARCH_VISUAL_AUDIT.md).

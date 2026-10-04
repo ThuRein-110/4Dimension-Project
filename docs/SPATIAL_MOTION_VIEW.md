@@ -26,9 +26,11 @@ sample timestamp separate from source playback time. Long gaps are not joined.
 If the current segment is unobserved, real history/occupancy remains visible but
 no stale or interpolated current marker is created.
 
-Bounds use the entire analyzed clip and remain fixed during scrubbing. The
+Full-path bounds use the chosen analysis interval and remain fixed during scrubbing.
+Selected-track and active-subject fit are optional; density always uses full-clip
+projection bounds and is cropped visually, so zoom cannot create edge hotspots. The
 selected path is stronger than other paths; the current footprint has an outline
-and ID/model-quality label. Map labels avoid current markers and one another.
+and ID/NOW label. Detection, depth and spatial Q appear in a separate legend. Map labels avoid current markers and one another.
 Top-down heading uses the correct screen rotation and X/Z axis scaling. Image
 and relative-depth maps use recent observed projected motion for arrow direction.
 No motion evidence means no heading arrow, especially at the first observation.
@@ -38,11 +40,13 @@ No motion evidence means no heading arrow, especially at the first observation.
 The 32-by-32 histogram uses actual sampled coordinates in the active projection.
 Each observed subject contributes up to one sample interval (`1 / analysis FPS`)
 of subject-time, clipped at video duration. Multiple subjects in a bin add their
-contributions. Color intensity is normalized to the maximum occupied bin;
-the legend reports bin count, maximum subject-seconds and scope.
+contributions. The display applies an edge-normalized Gaussian kernel to these raw bins;
+color intensity is normalized to the smoothed field maximum. Raw-bin data
+remains exportable. The legend reports scope, raw-bin count and total sampled
+subject-seconds. Shared interval ends clip sample weights, not just positions.
 
 Whole Recorded Clip is the default scope, available even at T=0. Observed Past
-to T is optional. Scope is independent from trajectory mode: a full-clip heatmap
+to T, Recent Window and Selected Time Range are optional. Scope is independent from trajectory mode: a full-clip heatmap
 does not create later current markers or predicted paths. Modes are Off, Selected
 Subject, All Subjects, Interaction Density and Pair Proximity Density, plus
 available class hypotheses. Pair mode requires a comparison ID. Proximity uses

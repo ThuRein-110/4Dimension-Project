@@ -28,6 +28,7 @@ async function fixtureApp(page:Page,cached=true,transform?:(data:Awaited<ReturnT
   await page.route('**/api/motion/research/jobs',route=>{starts++;running=true;cancelled=false;return route.fulfill({json:{id:data.id,sourceId:data.video.id,status:'running',stage:'CI-only job',done:0,total:5,subjects:0,cacheHit:false}});});
   await page.route('**/api/motion/research/jobs/**',route=>{if(route.request().url().endsWith('/cancel')){running=false;cancelled=true;}return route.fulfill({json:{id:data.id,sourceId:data.video.id,status:running?'running':cancelled?'cancelled':'complete',stage:running?'CI-only job':cancelled?'cancelled':'complete',done:running?1:5,total:5,subjects:2,cacheHit:false}});});
   await page.goto('/research');await expect(page.getByRole('button',{name:'Analyze Wildlife',exact:true})).toBeEnabled();
+  if(cached&&data.tracks.length){await expect(page.locator('.research-analysis')).toContainText('cache hit');await page.getByText('Spatial Controls',{exact:true}).click();await page.locator('.research-inspector summary').click();}
   return {get data(){return data;},get starts(){return starts;},complete(){running=false;cached=true;},async changeSource(){data=await researchFixture('b'.repeat(64));cached=false;}};
 }
 test('research cached playback, temporal selection, masks, pair metrics, views and exports',async({page})=>{
@@ -37,13 +38,13 @@ test('research cached playback, temporal selection, masks, pair metrics, views a
   await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-sample-time','0.4');await expect(page.locator('.research-video-stage canvas')).toHaveAttribute('data-subjects','2');
   await page.getByRole('combobox',{name:'Selected Research Subject'}).selectOption('1');await page.getByRole('combobox',{name:'Compare Research Subject'}).selectOption('2');
   await expect(page.locator('.research-pair')).toContainText('Paired observations');await expect(page.locator('.research-inspector')).toContainText('Facing');
-  await page.getByRole('spinbutton',{name:'Pair Interval Start'}).fill('.2');await page.getByRole('spinbutton',{name:'Pair Interval End'}).fill('.6');
+  await page.getByRole('spinbutton',{name:'Analysis Range Start'}).fill('.2');await page.getByRole('spinbutton',{name:'Analysis Range End'}).fill('.6');
   await page.getByRole('button',{name:'Next research frame',exact:true}).click();await expect.poll(()=>page.locator('video').evaluate(video=>(video as HTMLVideoElement).currentTime)).toBeCloseTo(.5);
   await page.getByText('Display & Analysis',{exact:true}).click();
   for(const name of ['Masks','3D Trajectories','Uncertainty'])await expect(page.getByRole('checkbox',{name,exact:true})).toBeChecked();
   await page.getByRole('combobox',{name:'Mask Style'}).selectOption('both');await page.getByRole('checkbox',{name:'Relative Depth Map',exact:true}).check();await page.getByRole('checkbox',{name:'3D Labels',exact:true}).check();await page.getByRole('button',{name:'Fill',exact:true}).click();await page.getByRole('button',{name:'Fit',exact:true}).click();
   await page.getByRole('button',{name:'Fullscreen research presentation',exact:true}).click();await expect.poll(()=>page.evaluate(()=>document.fullscreenElement?.contains(document.querySelector('.research-timeline')))).toBe(true);await page.evaluate(()=>document.exitFullscreen());
-  for(const mode of ['report','frames','tracks','events','pairs','markdown','snapshot','video','3d','split','annotated']){
+  for(const mode of ['report','frames','tracks','events','pairs','markdown','snapshot','video','3d','split','presentation','heatmap','heatmap-csv','annotated']){
     await page.getByRole('combobox',{name:'Research Export'}).selectOption(mode);const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Export research data'}).click();const download=await pending,bytes=readFileSync((await download.path())!);expect(bytes.length).toBeGreaterThan(100);if(mode==='report')expect(JSON.parse(bytes.toString()).id).toBe(app.data.id);if(mode==='frames')expect(JSON.parse(bytes.toString())).toHaveLength(5);if(['video','3d','split','snapshot'].includes(mode))expect(bytes.subarray(1,4).toString()).toBe('PNG');
   }
   await page.getByRole('button',{name:'Data',exact:true}).click();
@@ -53,10 +54,18 @@ test('research cached playback, temporal selection, masks, pair metrics, views a
   await page.reload();await expect(page.locator('.research-analysis')).toContainText('cache hit');expect(app.starts).toBe(0);
 });
 
+test('optional MP4 conversion failure downloads the original WebM',async({page})=>{
+  await fixtureApp(page);await page.route('**/api/motion/research/export/mp4',route=>route.fulfill({status:422,json:{error:'CI conversion unavailable'}}));
+  await page.getByRole('combobox',{name:'Research Export',exact:true}).selectOption('annotated-mp4');
+  const pending=page.waitForEvent('download');await page.getByRole('button',{name:'Export research data',exact:true}).click();
+  expect((await pending).suggestedFilename()).toMatch(/\.webm$/);
+  await expect(page.getByRole('alert')).toContainText('exported silent WebM instead');
+});
+
 test('research jobs can complete or cancel; replacing the source removes old analysis and selection',async({page})=>{
   const app=await fixtureApp(page,false);await page.getByRole('button',{name:'Analyze Wildlife',exact:true}).click();await expect(page.getByRole('button',{name:'Cancel Analysis',exact:true})).toBeVisible();await page.getByRole('button',{name:'Cancel Analysis',exact:true}).click();await expect(page.locator('.research-analysis')).toContainText('cancelled');
   await page.getByRole('button',{name:'Analyze Wildlife',exact:true}).click();await expect(page.getByRole('button',{name:'Cancel Analysis',exact:true})).toBeVisible();app.complete();await expect(page.locator('.research-analysis')).toContainText('5 samples / 2 tracks');
-  await page.getByRole('combobox',{name:'Selected Research Subject'}).selectOption('1');await page.getByRole('combobox',{name:'Compare Research Subject'}).selectOption('2');
+  await page.locator('.research-inspector summary').click();await page.getByRole('combobox',{name:'Selected Research Subject'}).selectOption('1');await page.getByRole('combobox',{name:'Compare Research Subject'}).selectOption('2');
   await app.changeSource();await page.getByRole('button',{name:'Refresh source video',exact:true}).click();await expect(page.locator('.research-inspector')).toHaveCount(0);await expect(page.locator('.research-3d-stage canvas')).toHaveAttribute('data-subjects','0');
   await expect(page.getByRole('button',{name:'Export research data'})).toBeDisabled();expect(app.data.id).toBe(await researchIdentity('b'.repeat(64),app.data.settings));
 });
@@ -133,4 +142,41 @@ test('right-side clip occupancy, observed trail modes and clicks share the video
   await page.getByRole('combobox',{name:'Occupancy Scope'}).selectOption('past');
   await expect(map).toHaveAttribute('data-heatmap-scope','past');
   await expect(page.locator('.research-pair')).toContainText('Current 2D');
+});
+
+test('smooth density scopes, graph seeking, manual notes and compact presentation',async({page})=>{
+  await fixtureApp(page);const map=page.locator('.research-3d-stage canvas');
+  await page.getByRole('slider',{name:'Research time',exact:true}).fill('0.6');
+  await expect(map).toHaveAttribute('data-time','0.6');const builds=await map.getAttribute('data-density-builds');
+  await page.getByRole('slider',{name:'Research time',exact:true}).fill('0.4');await expect(map).toHaveAttribute('data-time','0.4');
+  await expect(map).toHaveAttribute('data-density-builds',builds!);
+  await page.getByText('Visual Refinement',{exact:true}).click();
+  await page.getByRole('combobox',{name:'Density Smoothing'}).selectOption('high');
+  await expect.poll(()=>map.getAttribute('data-density-builds')).not.toBe(builds);
+  await page.getByRole('combobox',{name:'Temporal Window'}).selectOption('0.5');
+  await expect(map).toHaveAttribute('data-heatmap-scope','recent');
+  await page.getByRole('spinbutton',{name:'Analysis Range Start'}).fill('.2');
+  await page.getByRole('spinbutton',{name:'Analysis Range End'}).fill('.6');
+  await expect(map).toHaveAttribute('data-heatmap-scope','range');
+  await page.getByRole('button',{name:'Data',exact:true}).click();
+  await expect(page.locator('.research-chart')).toHaveAttribute('data-valid-points','3');
+  const graph=page.locator('.research-chart .u-over'),rect=(await graph.boundingBox())!;
+  await graph.click({position:{x:rect.width*.75,y:rect.height*.5}});
+  await expect.poll(()=>page.locator('video').evaluate(v=>(v as HTMLVideoElement).currentTime)).toBeGreaterThan(.4);
+  await page.getByRole('button',{name:'Split',exact:true}).click();
+  await page.getByRole('spinbutton',{name:'Analysis Range End'}).fill('1');
+  await page.getByRole('spinbutton',{name:'Analysis Range Start'}).fill('0.9');
+  await expect(map).toHaveAttribute('data-heatmap-bins','0');await expect(map).toHaveAttribute('data-path-segments','0');
+  await expect(map).toHaveAttribute('data-subjects','2');
+  await page.getByRole('button',{name:'Data',exact:true}).click();await expect(page.locator('.research-chart')).toHaveCount(0);
+  await page.getByRole('button',{name:'Split',exact:true}).click();await page.getByRole('button',{name:'Clear Analysis Range'}).click();
+  await page.getByText('Manual Notes / Bookmarks',{exact:true}).click();await page.getByRole('textbox',{name:'Manual Note'}).fill('Observed turn');
+  await page.getByRole('button',{name:'Add Note at T',exact:true}).click();await expect(page.locator('.research-notes')).toContainText('MANUAL NOTE / Observed turn');
+  await page.getByRole('button',{name:'Add Bookmark',exact:true}).click();
+  await page.reload();await expect(page.locator('.research-analysis')).toContainText('cache hit');await expect(page.locator('.research-notes')).toContainText('Observed turn');
+  await page.setViewportSize({width:1920,height:1080});await page.getByRole('button',{name:'Presentation Mode',exact:true}).click();
+  await expect(page.locator('.research-spatial-config')).not.toBeVisible();await expect(page.locator('.research-presentation-bar')).toContainText('2.5D');
+  await expect(page.locator('.research-video-stage')).toBeVisible();await expect(map).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight)).toBe(true);
+  await page.getByRole('button',{name:'Exit presentation mode',exact:true}).click();await expect(page.locator('.research-view-controls')).toBeVisible();
 });

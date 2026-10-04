@@ -24,6 +24,8 @@ it('validates research commands, cache identity, cancellation and private import
     expect((await fetch(`${base}/runtime`)).status).toBe(200);
     expect((await fetch(`${base}/jobs`,{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'})).status).toBe(403);
     expect((await fetch(`${base}/media`,{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:'private'})).status).toBe(403);
+    expect((await fetch(`${base}/export/mp4`,{method:'POST',headers:{'Content-Type':'video/webm'},body:'private'})).status).toBe(403);
+    expect((await fetch(`${base}/export/mp4`,{method:'POST',headers:{'Content-Type':'video/webm','x-livespace-client':'desktop'},body:'invalid'})).status).toBe(422);
     expect((await fetch(`${base}/jobs`,{method:'POST',headers,body:JSON.stringify({sourceId:data.video.id,settings:{fps:999,threshold:.23}})})).status).toBe(400);
     expect((await fetch(`${base}/jobs`,{method:'POST',headers,body:JSON.stringify({sourceId:'b'.repeat(64),settings:data.settings})})).status).toBe(422);
     const response=await fetch(`${base}/jobs`,{method:'POST',headers,body:JSON.stringify({sourceId:data.video.id,settings:data.settings})});

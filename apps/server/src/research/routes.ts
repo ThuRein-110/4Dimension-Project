@@ -1,6 +1,7 @@
 import express from 'express';
 import { researchSettingsSchema } from '../../../../packages/shared/src/research.js';
 import { ResearchService } from './service.js';
+import { convertResearchVideo } from './video-export.js';
 
 /** Mounted inside Motion's localhost/origin guard, not as a public media API. */
 export function researchRoutes(service:ResearchService){
@@ -10,6 +11,7 @@ export function researchRoutes(service:ResearchService){
   router.post('/media',express.raw({type:'application/octet-stream',limit:'256mb'}),async(req,res)=>{try{if(!Buffer.isBuffer(req.body)||!req.body.length){res.sendStatus(400);return;}const name=decodeURIComponent(req.get('x-video-name')??'source.mp4');res.json(await service.upload(req.body,name));}catch(error){res.status(422).json({error:error instanceof Error?error.message:'Local video could not be read.'});}});
   router.get('/media/:key/info',async(req,res)=>{try{res.json(await service.mediaInfo(req.params.key));}catch{res.status(422).json({error:'Local video unavailable.'});}});
   router.get('/media/:key/stream',async(req,res)=>{if(!hash.test(req.params.key)||typeof req.query.id!=='string'||!hash.test(req.query.id)){res.sendStatus(400);return;}try{const media=service.mediaService(req.params.key);await media.info();res.sendFile(await media.stream(req.query.id),{dotfiles:'allow'});}catch{res.sendStatus(404);}});
+  router.post('/export/mp4',express.raw({type:'video/webm',limit:'128mb'}),async(req,res)=>{const controller=new AbortController(),closed=()=>{if(!res.writableEnded)controller.abort();};res.on('close',closed);try{if(!Buffer.isBuffer(req.body)){res.sendStatus(400);return;}const bytes=await convertResearchVideo(req.body,controller.signal);res.type('video/mp4').send(bytes);}catch(error){if(!controller.signal.aborted)res.status(422).json({error:error instanceof Error?error.message:'Local conversion unavailable'});}finally{res.off('close',closed);}});
   router.use(express.json({limit:'16kb'}));
   router.post('/jobs',async(req,res)=>{
     const parsed=researchSettingsSchema.safeParse(req.body?.settings);

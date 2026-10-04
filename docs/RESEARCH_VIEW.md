@@ -110,9 +110,56 @@ Markdown report, annotated PNG, spatial PNG, split PNG, a presentation snapshot
 with selected metrics/time/track lanes, and a silent annotated WebM.
 WebM is recorded locally in
 real time through a separate decoder; it does not move the interactive timeline.
-It can be cancelled. MP4 encoding is not implemented; the verified WebM path is
-retained without a new upload/transcode endpoint. Uncalibrated results stay in
+It can be cancelled. Optional H.264 MP4 conversion uses the existing local FFmpeg
+through a localhost-only, desktop-header-gated endpoint. It accepts WebM up to
+128 MB, one conversion at a time, at most 120 seconds and a bounded timeout.
+Temporary recordings live outside the repository and are deleted after conversion.
+If conversion is unavailable the original WebM is downloaded with an explicit warning.
+No video is uploaded to GitHub or an external service. Uncalibrated results stay in
 relative units; manual scale remains approximate. No export contains true anatomy.
+
+## Visual And Temporal Refinement
+
+Spatial Controls and Visual Refinement are collapsed by default. Medium
+Gaussian display smoothing replaces hard bins; Low/Medium/High kernel radii are
+0.65/1.2/2 histogram cells. Edge-normalized kernels preserve total sampled
+subject-time. The density scale is normalized to the smoothed field maximum,
+not probability. Raw-bin CSV preserves aggregate observations, projection,
+units and range; Heatmap PNG uses full-recorded projection bounds. Occupancy is
+a sample-interval estimate, clipped at the selected interval end, not exact dwell time.
+
+Whole Clip, Past To T, Recent Window and shared Range scopes are available.
+Temporal Window presets (0.5/1/2/5 seconds) limit recent trails and density.
+The shared timeline range overrides those presets and updates trails, density,
+graphs and pair interval summaries. Empty intervals do not produce fake charts.
+Clear Analysis Range returns to full analysis. Trajectory mode remains separate;
+Full Recorded may show later observations and never calls them predictions.
+
+Selected subjects are strongest; other current proxies are reduced in opacity.
+Trails fade with age and narrow toward older observations. Selected + Nearby
+shows the selected/comparison histories and up to two co-observed nearest
+subjects. Optional sparse trajectory timestamps use actual samples. Optional
+ghosts remain past observations, and group centroid is a geometric projected mean.
+Full Recorded Path, Selected Track and Auto Fit Active control map bounds.
+
+Detection score, depth quality and spatial Q are shown separately. Spatial Q is
+the minimum of detection/depth quality in a depth-bearing projection, not a
+probability or identity confidence. Tracking association confidence is Unknown.
+Weak geometry has faded/dashed outlines and wider rings. Gaps are striped
+unobserved periods; observed-again markers are recovery hypotheses, not certified
+identity continuity. Identity switches/unique-animal fragmentation remain Unknown.
+
+Graphs require two valid numeric observations, follow the video clock, and
+click-to-seek the source. Manual notes and bookmarks live in browser localStorage
+bound to source identity; they never modify automatic events or the analysis cache.
+The combined report adds a separate viewer section containing range/options/manual
+annotations. Previous/Next Bookmark and Previous/Next Event navigate distinct sets.
+
+Presentation Mode hides configuration, workspace navigation and data panels while
+retaining source/spatial canvases, compact status, transport and an optional
+collapsed inspector. Fullscreen uses that same layout. Presentation PNG omits
+debug panels; Research Snapshot includes selected metrics and observed track lanes.
+Both identify current time, selection/pair, spatial mode and estimated depth/scale.
 
 ## Verification And Remaining Limits
 
