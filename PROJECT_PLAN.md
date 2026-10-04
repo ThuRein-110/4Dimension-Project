@@ -86,3 +86,9 @@ lanes -> data-only graphs/inspectors -> scientific exports -> real-clip validati
 Manual references are optional approximate scale, not recovered camera pose.
 Future optical flow, prediction, animal anatomy and multi-camera reconstruction
 have no placeholder controls. No phase depends on an iPhone or marker.
+
+2026-10-04: strengthen the same-data spatial motion map with all-past trajectories,
+whole-clip occupancy by default, explicit current/past/full-recorded modes,
+correct projected motion heading, synchronized map selection, pair proximity
+density and observed-history context during missing-current segments.
+Implementation and limits: docs/SPATIAL_MOTION_VIEW.md.

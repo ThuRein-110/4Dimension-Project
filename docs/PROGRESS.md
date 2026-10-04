@@ -309,3 +309,36 @@ changes to that module. Existing Vite large-chunk warnings remain.
 
 Original video size and mtime are unchanged. Git tracks no video/model/private
 cache/test-result files; privacy patterns were checked before staging this update.
+
+## Spatial Motion Presentation
+
+2026-10-04: strengthened the existing right-side view without changing the model
+pipeline or source recording. Default AUTO for the wildlife clip remains 2.5D
+X/Z, now showing whole-recorded-clip occupancy and all observed past trajectories.
+Current/All Observed Past/Full Recorded Clip modes are separate from occupancy
+scope. Later recorded map segments are dashed and explicitly not forecasts.
+Current footprints, stronger selection, projected heading arrows, uncertainty,
+same-ID/color selection and clean pair/closest-approach annotations are functional.
+
+Fixed the reversed top-down screen-heading transform and accounted for unequal
+X/Z screen scales. Bounds fit actual full-clip coordinates and remain stable.
+Current-missing segments retain recorded context without a stale current marker.
+Mixed-depth scenes fall back rather than silently dropping a visible subject.
+Heatmaps use actual 32x32 sampled-coordinate bins weighted by subject-time;
+selected/all/class/proximity/pair modes and clip/past scopes are available. Derived
+bins/paths are cached by sample bucket and controls. Labels avoid markers and
+other annotations, including at mobile width.
+
+Validation: lint, typecheck, 94 unit tests, all 54 browser tests, final focused
+Research regressions, production build and production smoke passed. Real-cache
+integration passed in development and the compiled production UI: 75 samples,
+seven histories, 208 masks, same IDs/current time/selection across panels,
+whole-clip occupancy at zero, past/full trajectory modes, nonblank moving
+desktop/mobile canvases, fullscreen, manual reference and all 11 exports with
+decoded WebM/cancellation. Actual map evidence: 77 occupied all-subject bins,
+maximum 2.00 subject-seconds per bin for the uncalibrated clip. Screenshots at
+T=0, full-recorded mode, desktop and mobile were visually inspected.
+
+Scientific limits and weighting are in [SPATIAL_MOTION_VIEW](SPATIAL_MOTION_VIEW.md).
+No new inference or synthetic animal motion was added; the existing validated
+local v2 cache is reused. Video/models/derived evidence remain ignored and local.

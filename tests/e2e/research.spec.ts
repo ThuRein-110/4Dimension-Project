@@ -6,6 +6,8 @@ import { join } from 'node:path';
 import ffmpeg from 'ffmpeg-static';
 import { researchFixture } from '../fixtures/research.js';
 import { researchIdentity } from '../../packages/shared/src/research.js';
+import { spatialBounds } from '../../packages/shared/src/research-spatial.js';
+import { refineResearch } from '../../packages/shared/src/research-refinement.js';
 
 // CI-only generated media/results. Never presented as real animal inference.
 const directory=mkdtempSync(join(tmpdir(),'research-ci-')),file=join(directory,'fixture.mp4');
@@ -104,4 +106,31 @@ test('no observations hides research controls and leaves an explicit unavailable
   await expect(page.locator('.research-inspector')).toHaveCount(0);
   await expect(page.locator('.research-chart')).toHaveCount(0);
   await expect(page.getByText('Display & Analysis',{exact:true})).toHaveCount(0);
+});
+
+test('right-side clip occupancy, observed trail modes and clicks share the video tracks',async({page})=>{
+  const app=await fixtureApp(page),map=page.locator('.research-3d-stage canvas');
+  await expect(map).toHaveAttribute('data-heatmap-scope','clip');
+  await expect.poll(async()=>Number(await map.getAttribute('data-heatmap-bins'))).toBeGreaterThan(0);
+  const bins=await map.getAttribute('data-heatmap-bins');
+  await expect(map).toHaveAttribute('data-track-ids','1,2');
+  await expect(map).toHaveAttribute('data-path-segments','0');
+  await page.getByRole('slider',{name:'Research time',exact:true}).fill('0.4');
+  await expect(map).toHaveAttribute('data-path-segments','4');
+  await expect(map).toHaveAttribute('data-heatmap-bins',bins!);
+  await expect(map).toHaveAttribute('data-later-recorded-segments','0');
+  await page.getByRole('combobox',{name:'Spatial Trajectory'}).selectOption('full');
+  await expect(map).toHaveAttribute('data-path-segments','8');
+  await expect(map).toHaveAttribute('data-later-recorded-segments','4');
+  await page.getByRole('combobox',{name:'Spatial Trajectory'}).selectOption('current');
+  await expect(map).toHaveAttribute('data-path-segments','0');
+  const refined=refineResearch(app.data),box=spatialBounds(refined,'top'),s=refined.frames[2].subjects[1],rect=(await map.boundingBox())!;
+  await map.click({position:{x:32+(s.worldEstimate!.x-box.x)/box.w*(rect.width-64),y:rect.height-80-(s.worldEstimate!.z-box.z)/box.h*(rect.height-112)}});
+  await expect(page.getByRole('combobox',{name:'Selected Research Subject'})).toHaveValue('2');
+  await expect(map).toHaveAttribute('data-selected','2');
+  await page.getByRole('combobox',{name:'Compare Research Subject'}).selectOption('1');
+  await page.getByRole('combobox',{name:'Activity Heatmap'}).selectOption('pair');
+  await page.getByRole('combobox',{name:'Occupancy Scope'}).selectOption('past');
+  await expect(map).toHaveAttribute('data-heatmap-scope','past');
+  await expect(page.locator('.research-pair')).toContainText('Current 2D');
 });

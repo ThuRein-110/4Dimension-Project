@@ -84,10 +84,16 @@ default, with Off/Low/Medium/High choices. Raw samples remain in JSON. Large
 gaps/image jumps reset derivatives; weak motion hides heading. Acceleration and
 geometric encirclement require sufficient data and Advanced / Experimental.
 
-Activity heatmaps accumulate actual observation occupancy in spatial bins up to
-the current time. Selected/all subjects, available class hypotheses and observed
-proximity density are supported. Full Track History pauses playback and explicitly
+Activity heatmaps default to whole-recorded-clip occupancy, including at T=0;
+Observed Past to T is optional. Selected/all subjects, available class hypotheses,
+observed interaction density and selected-pair proximity density are supported.
+Spatial trajectories default to all observed past history rather than two seconds;
+Current Position and Full Recorded Clip are explicit modes. Later recorded paths
+are dashed and labeled, not predictions. Full Track History pauses playback and explicitly
 shows the entire recorded clip, including later recorded observations, not forecasts.
+See [Spatial Motion View](SPATIAL_MOTION_VIEW.md) for projection, occupancy weighting,
+selection synchronization and limits. Missing-current segments retain real context
+without creating a current subject. Screen heading now respects X/Z axis scaling.
 Visible VIDEO/track/EVENTS/closest-pair lanes use actual samples. Source frame,
 video T and analysis sample are separate readouts. Graphs require at least two
 numeric observations; scene distances require usable depth for both subjects.

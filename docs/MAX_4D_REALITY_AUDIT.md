@@ -159,3 +159,19 @@ scale cannot fix camera pose or establish exact metres. No flow, appearance ReID
 animal skeleton, predicted track, biological classifier or volumetric capture
 is presented as complete. Annotated WebM is the working video export; MP4 remains
 unimplemented rather than adding an unverified transcode/upload path.
+
+## 2026-10-04 Spatial Follow-Up
+
+WORKING: whole-clip occupancy at T=0, same-track/current-time selection across
+video/map, current/past/full-recorded trajectories, history context during current
+misses, correct projected screen heading, pair density and non-overlapping labels.
+Default for this clip is AUTO X/Z with all observed past trails and full-clip
+occupancy. Full-recorded later paths are dashed, not predictions. The previous
+two-second spatial default and heatmap-off default weakened the presentation;
+the left source video still uses short trails. A reversed map heading transform
+was corrected. Inferred depth/geometry and proxy quality remain EXPERIMENTAL.
+
+94 unit tests, 54 browser tests, production build/smoke and development/compiled
+production real-cache integration pass. No model or source change: 75 samples,
+7 histories, 208 masks. At default all-subject clip scope, the actual map contains
+77 occupied bins, max 2.00 subject-seconds/bin. See [Spatial Motion View](SPATIAL_MOTION_VIEW.md).

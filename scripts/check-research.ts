@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import ffprobe from 'ffprobe-static';
 import { chromium,type Page } from 'playwright';
+import { spatialBounds } from '../packages/shared/src/research-spatial.js';
 import { researchAnalysisSchema,researchIdentity,researchFrameAt } from '../packages/shared/src/research.js';
 
 // Real local inference and real media only. CI fixtures are tested separately.
@@ -42,12 +43,30 @@ try{
   if(reanalyze){await page.getByRole('button',{name:'Reanalyze',exact:true}).click();await page.getByRole('button',{name:'Cancel Analysis',exact:true}).waitFor();await page.waitForFunction(()=>!document.querySelector('.research-progress')&&document.querySelector('.research-analysis')?.textContent?.includes('samples /'),undefined,{timeout:300000});assert(!(await page.getByRole('alert').count()),'Fresh real inference must load without errors');}
   assert.equal(await page.getByRole('button',{name:'Split',exact:true}).getAttribute('aria-pressed'),'true');
   if(reanalyze){data=researchAnalysisSchema.parse(await(await fetch(`${base}/api/motion/research/analyses/${id}`)).json());assert.match(data.sourceHash??'',/^[a-f0-9]{64}$/);}
+  await seek(0);
+  assert.equal(await page.locator(scene).getAttribute('data-heatmap-scope'),'clip');
+  await page.waitForFunction(()=>Number(document.querySelector<HTMLCanvasElement>('.research-3d-stage canvas')?.dataset.heatmapBins)>0);
+  const clipBins=await page.locator(scene).getAttribute('data-heatmap-bins');
+  await page.locator('.research-spatial').screenshot({path:'test-results/research-real-spatial-zero.png'});
   const t=Math.min(5,data.video.duration*.4);await seek(t);
+  assert.equal(await page.locator(scene).getAttribute('data-track-ids'),await page.locator(overlay).getAttribute('data-track-ids'));
+  assert.equal(await page.locator(scene).getAttribute('data-heatmap-bins'),clipBins);
+  assert(Number(await page.locator(scene).getAttribute('data-path-segments'))>0);
+  const pastSegments=Number(await page.locator(scene).getAttribute('data-path-segments'));
+  await page.getByRole('combobox',{name:'Spatial Trajectory'}).selectOption('full');
+  await page.waitForFunction(()=>Number(document.querySelector<HTMLCanvasElement>('.research-3d-stage canvas')?.dataset.laterRecordedSegments)>0);
+  assert(Number(await page.locator(scene).getAttribute('data-path-segments'))>pastSegments);
+  await page.locator('.research-spatial').screenshot({path:'test-results/research-real-spatial-full.png'});
+  await page.getByRole('combobox',{name:'Spatial Trajectory'}).selectOption('past');
   const frame=researchFrameAt(data,t)!;assert(frame.subjects.length>=2);
   const before=await pixels(page,scene),videoPixels=await pixels(page,overlay);assert(before.colored>500);assert(videoPixels.colored>100);assert.equal(before.subjects,frame.subjects.length);
   const target=frame.subjects[0],bounds=(await page.locator(overlay).boundingBox())!,imageHeight=Math.min(bounds.height,bounds.width*data.video.height/data.video.width),imageWidth=imageHeight*data.video.width/data.video.height;
   await page.locator(overlay).click({position:{x:(bounds.width-imageWidth)/2+target.center2D.x*imageWidth,y:(bounds.height-imageHeight)/2+target.center2D.y*imageHeight}});
   assert(await page.getByRole('combobox',{name:'Selected Research Subject'}).inputValue());
+  const mapRect=(await page.locator(scene).boundingBox())!,mapBox=spatialBounds(data,'top'),p=target.worldEstimate!;
+  await page.locator(scene).click({position:{x:32+(p.x-mapBox.x)/mapBox.w*(mapRect.width-64),y:mapRect.height-80-(p.z-mapBox.z)/mapBox.h*(mapRect.height-112)}});
+  assert.equal(await page.getByRole('combobox',{name:'Selected Research Subject'}).inputValue(),String(target.id));
+  await page.waitForFunction(()=>document.querySelector<HTMLCanvasElement>('.research-3d-stage canvas')?.dataset.selected===document.querySelector<HTMLCanvasElement>('.research-video-stage canvas')?.dataset.selected);
   await page.getByRole('combobox',{name:'Selected Research Subject'}).selectOption(String(target.id));await page.getByRole('combobox',{name:'Compare Research Subject'}).selectOption(String(frame.subjects.find(subject=>subject.id!==target.id)!.id));
   assert((await page.locator('.research-pair').textContent())?.includes('Paired observations'));
   const next=Math.min(t+2,data.video.duration-.5);await seek(next);const after=await pixels(page,scene);assert.notEqual(before.hash,after.hash,'3D proxies must move with time');await seek(t);
@@ -61,7 +80,7 @@ try{
   await page.getByRole('checkbox',{name:'Full Track History / Recorded Clip'}).check();
   assert(await page.locator('video').evaluate(v=>(v as HTMLVideoElement).paused));
   await page.getByRole('checkbox',{name:'Full Track History / Recorded Clip'}).uncheck();
-  await page.getByRole('combobox',{name:'Activity Heatmap'}).selectOption('off');
+  await page.getByRole('combobox',{name:'Activity Heatmap'}).selectOption('all');
   await page.getByText('Manual Research Reference / Optional',{exact:true}).click();
   await page.getByRole('spinbutton',{name:'Known Research Distance'}).fill('2');
   for(const [name,x] of [['Reference Point A',.42],['Reference Point B',.58]] as const){
@@ -73,7 +92,7 @@ try{
   await page.getByText('Manual Research Reference / Optional',{exact:true}).click();
   await page.getByRole('combobox',{name:'Mask Style',exact:true}).selectOption('both');await page.getByRole('checkbox',{name:'3D Labels',exact:true}).check();
   await page.getByRole('button',{name:'Fullscreen research presentation',exact:true}).click();await page.waitForFunction(()=>document.fullscreenElement?.contains(document.querySelector('.research-timeline')));await page.screenshot({path:'test-results/research-real-fullscreen.png'});await page.evaluate(()=>document.exitFullscreen());
-  await page.screenshot({path:'test-results/research-real-desktop.png',fullPage:true});
+  await page.screenshot({path:'test-results/research-real-desktop.png',fullPage:true});await page.locator('.research-spatial').screenshot({path:'test-results/research-real-spatial-desktop.png'});
   const report=await capture('report','json');assert.equal(JSON.parse(report.bytes.toString()).id,id);const frames=await capture('frames','json');assert.equal(JSON.parse(frames.bytes.toString()).length,data.frames.length);
   assert((await capture('markdown','md')).bytes.toString().includes('## Closest Approaches'));
   for(const mode of ['tracks','events','pairs'])assert((await capture(mode,'csv')).bytes.toString().includes('time_seconds'));
@@ -84,7 +103,8 @@ try{
   assert((await page.getByRole('tabpanel',{name:'Diagnostics'}).textContent())?.includes('cached data only'));
   await page.getByRole('button',{name:'Split',exact:true}).click();await page.getByRole('combobox',{name:'Spatial View'}).selectOption('3d');await page.getByRole('combobox',{name:'Research camera preset'}).selectOption('Side');await page.waitForTimeout(200);assert((await pixels(page,scene)).colored>500);await page.getByRole('button',{name:'Reset research camera'}).click();await page.waitForTimeout(120);const threeBefore=await pixels(page,scene);await seek(next);assert.notEqual((await pixels(page,scene)).hash,threeBefore.hash,'Estimated 3D subjects must change with observed T');await seek(t);
   await page.setViewportSize({width:390,height:844});await page.waitForTimeout(250);await page.screenshot({path:'test-results/research-real-mobile.png',fullPage:true});assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));assert((await pixels(page,scene)).colored>100);assert((await pixels(page,overlay)).colored>100);
+  await page.getByRole('combobox',{name:'Spatial View'}).selectOption('auto');await page.waitForTimeout(150);await page.locator('.research-spatial').screenshot({path:'test-results/research-real-spatial-mobile.png'});
   for(const mode of ['Video','3D Research']){await page.getByRole('button',{name:mode,exact:true}).click();await page.waitForTimeout(150);assert((await pixels(page,mode==='Video'?overlay:scene)).colored>100);}
   await page.reload();await page.waitForFunction(()=>document.querySelector('.research-analysis')?.textContent?.includes('cache hit'));assert.equal(inferenceRequests.length,reanalyze?1:0,'Only explicit reanalysis may start inference');assert.deepEqual(errors,[]);
-  console.log(JSON.stringify({source:info.name,frames:data.frames.length,tracks:data.tracks.length,masks,events:data.events.length,device:data.runtime.device,reusedCache:reused,synchronized:true,moving3D:true,autoTopDown:true,activityHeatmap:true,manualReference:true,mobileNonblank:true,fullscreen:true,exports:11,annotatedVideoDecoded:true,noPlaybackInference:true,privateOutputs:'test-results (ignored)'},null,2));
+  console.log(JSON.stringify({source:info.name,frames:data.frames.length,tracks:data.tracks.length,masks,events:data.events.length,device:data.runtime.device,reusedCache:reused,synchronized:true,moving3D:true,autoTopDown:true,wholeClipOccupancyAtZero:true,observedPastAndFullModes:true,sameTrackIds:true,rightSelectionMatches:true,activityHeatmap:true,manualReference:true,mobileNonblank:true,fullscreen:true,exports:11,annotatedVideoDecoded:true,noPlaybackInference:true,privateOutputs:'test-results (ignored)'},null,2));
 }finally{await context.close();await browser.close();}
