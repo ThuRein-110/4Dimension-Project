@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import { readFile } from 'node:fs/promises';
+import { parseRecording } from '../../packages/cube-lab/src/recording.js';
 
 async function pixels(page: Page) {
   return page.locator('canvas[aria-label="3D cube overlay"]').evaluate(node => {
@@ -7,6 +9,7 @@ async function pixels(page: Page) {
     let count = 0; let sum = 0; for (let i = 3; i < data.length; i += 4) if (data[i]) { count++; sum += i; } return { count, sum };
   });
 }
+async function processedFrames(page:Page,count:number){const frames=page.getByTestId('cube-frame-count'),before=Number(await frames.textContent());await expect.poll(async()=>Number(await frames.textContent())).toBeGreaterThanOrEqual(before+count);}
 async function model(page: Page) {
   return page.evaluate(async () => { const path = performance.getEntriesByType('resource').find(e => e.name.includes('/cube-lab/store.ts'))!.name; const store = (await import(path)).cubeLab; const s = store.get(); return { mode: s.mode, tracking: s.tracking, count: s.recording?.samples.length ?? 0, recording: s.recording, pose: store.pose() }; });
 }
@@ -29,7 +32,7 @@ test('webcam test cube is transparent and responsive, without a phone or detecto
 });
 
 test('real ArUco pixels flow through webcam, worker, pose, recording and decoupled replay', async ({ page }) => {
-  test.setTimeout(60000); const errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+  test.setTimeout(60000); const errors: string[] = [],consoleOutput:string[]=[]; page.on('pageerror', e => errors.push(e.message));page.on('console',m=>{if(consoleOutput.length<100)consoleOutput.push(m.type()+': '+m.text());});
   await page.addInitScript(() => {
     navigator.mediaDevices.getUserMedia = async () => {
       const image = new Image(); image.src = '/markers/cube-marker.png'; await image.decode();
@@ -46,26 +49,32 @@ test('real ArUco pixels flow through webcam, worker, pose, recording and decoupl
   await expect(page.getByText('Webcam active', { exact: true })).toBeVisible(); await page.getByRole('button', { name: '4D Cube Lab', exact: true }).click();
   await page.getByRole('button', { name: 'Start tracking', exact: true }).click(); await expect(page.getByTestId('cube-tracking')).toHaveText('TRACKING');
   await expect.poll(async () => (await pixels(page)).count).toBeGreaterThan(100);
-  await page.getByRole('button', { name: 'Start Recording', exact: true }).click(); await expect.poll(async () => (await model(page)).count).toBeGreaterThan(10);
-  await page.getByRole('button', { name: 'Pause', exact: true }).click(); const paused = (await model(page)).count; await page.waitForTimeout(500); expect((await model(page)).count).toBe(paused);
+  await page.getByRole('button', { name: 'Start Recording', exact: true }).click();
+  try {
+    await expect(page.getByTestId('cube-mode')).toHaveText('RECORDING'); await expect.poll(async () => (await model(page)).count).toBeGreaterThan(10); }
+  catch (error) { const diagnostics={ uiMode: await page.getByTestId('cube-mode').textContent(), uiSamples: await page.getByTestId('cube-samples').textContent(), model: await model(page), resources: await page.evaluate(() => performance.getEntriesByType('resource').filter(e => e.name.includes('/cube-lab/store.ts')).map(e => e.name)),errors,consoleOutput };console.log('Cube recording failure diagnostics',diagnostics);await test.info().attach('cube-recording-diagnostics',{body:JSON.stringify(diagnostics,null,2),contentType:'application/json'}); throw error; }
+  await page.getByRole('button', { name: 'Pause', exact: true }).click(); const paused = (await model(page)).count; await expect(page.getByTestId('cube-mode')).toHaveText('RECORDING / PAUSED'); await processedFrames(page, 5); expect((await model(page)).count).toBe(paused);
   await page.getByRole('button', { name: 'Resume', exact: true }).click(); await expect.poll(async () => (await model(page)).count).toBeGreaterThan(paused + 3);
   await page.evaluate(() => { document.documentElement.dataset.cubeHidden = 'true'; }); await expect(page.getByTestId('cube-tracking')).toHaveText('TRACKING LOST');
-  const lost = (await model(page)).count; await page.waitForTimeout(400); expect((await model(page)).count).toBe(lost);
+  const lost = (await model(page)).count; await processedFrames(page, 5); expect((await model(page)).count).toBe(lost);
   await page.evaluate(() => { document.documentElement.dataset.cubeHidden = 'false'; }); await expect(page.getByTestId('cube-tracking')).toHaveText('TRACKING');
   await expect.poll(async () => (await model(page)).count).toBeGreaterThan(lost + 3); await page.getByRole('button', { name: 'Stop', exact: true }).click();
   await expect(page.getByTestId('cube-mode')).toHaveText('PLAYBACK'); const r = (await model(page)).recording!; expect(r.samples.length).toBeGreaterThan(15);
+  expect(r.durationMs).toBeGreaterThan(0);expect(r.samples[0].timestampMs).toBeGreaterThanOrEqual(0);expect(r.samples[0].timestampMs).toBeLessThan(1000 / r.sampleRate);
+  for(let i=1;i<r.samples.length;i++){expect(r.samples[i].timestampMs).toBeGreaterThan(r.samples[i-1].timestampMs);expect(r.samples[i].timestampMs).toBeLessThanOrEqual(r.durationMs);}
   for (const axis of ['x', 'y', 'z'] as const) { const values = r.samples.map((p: {position: {x: number; y: number; z: number}}) => p.position[axis]); expect(Math.max(...values) - Math.min(...values)).toBeGreaterThan(.005); }
   const rotations = r.samples.map((p: {rotation: {z: number}}) => p.rotation.z); expect(Math.max(...rotations) - Math.min(...rotations)).toBeGreaterThan(.01);
-  const initial = (await model(page)).pose; await page.waitForTimeout(400); expect((await model(page)).pose).toEqual(initial);
+  const initial = (await model(page)).pose; await processedFrames(page, 3); expect((await model(page)).pose).toEqual(initial);
   const time = Math.floor(r.durationMs / 2); await page.getByRole('slider', { name: 'Cube time', exact: true }).fill(String(time));
   const mid = (await model(page)).pose; expect(mid.timestampMs).toBe(time);
   await page.getByRole('textbox', { name: 'Keyframe name', exact: true }).fill('Center'); await page.getByRole('button', { name: 'Add Keyframe', exact: true }).click();
   await page.getByRole('button', { name: 'Cube first frame' }).click(); await page.getByRole('button', { name: 'Seek keyframe Center', exact: true }).click(); expect((await model(page)).pose).toEqual(mid);
   await page.getByRole('combobox', { name: 'Speed', exact: true }).selectOption('2'); await page.getByRole('checkbox', { name: 'Loop', exact: true }).check();
-  const before = await pixels(page); await page.getByRole('button', { name: 'Play cube recording', exact: true }).click(); await page.waitForTimeout(350); expect((await pixels(page)).sum).not.toBe(before.sum); await page.getByRole('button', { name: 'Pause cube playback', exact: true }).click();
+  const before = await pixels(page); await page.getByRole('button', { name: 'Play cube recording', exact: true }).click(); await expect.poll(async () => (await pixels(page)).sum).not.toBe(before.sum); await page.getByRole('button', { name: 'Pause cube playback', exact: true }).click();
   await page.getByRole('textbox', { name: 'Take name', exact: true }).fill('Physical pixel test'); await page.getByRole('button', { name: 'Save Recording', exact: true }).click(); await expect(page.getByRole('button', { name: /^Physical pixel test/ })).toBeVisible();
   const download = page.waitForEvent('download'); await page.getByRole('button', { name: 'Export Recording JSON', exact: true }).click(); const file = await download; expect(file.suggestedFilename()).toMatch(/^cube-recording-.*json$/);
   await file.saveAs('test-results/cube-recording.json');
+  const exported=parseRecording(JSON.parse(await readFile('test-results/cube-recording.json','utf8')));expect(exported.samples).toEqual(r.samples);expect(exported.durationMs).toBe(r.durationMs);
   await page.screenshot({ path: 'test-results/cube-tracking-replay.png', fullPage: true });
   const screenshot = page.waitForEvent('download'); await page.getByRole('button', { name: 'Capture 3D only', exact: true }).click(); expect((await screenshot).suggestedFilename()).toMatch(/png$/);
   await page.reload(); await page.getByRole('button', { name: '4D Cube Lab', exact: true }).click(); await page.getByRole('button', { name: /^Physical pixel test/ }).click();

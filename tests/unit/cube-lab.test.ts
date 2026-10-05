@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Quaternion, Vector3 } from 'three';
 import { CubeRecordingController, interpolatePose, parseRecording, type CubePose, type CubeRecording } from '../../packages/cube-lab/src/recording.js';
 import { cubePose, CubePoseFilter, verticalFov } from '../../packages/cube-lab/src/pose.js';
@@ -9,6 +9,25 @@ const pose: CubePose = { position: { x: .1, y: .2, z: .8 }, rotation: { x: 0, y:
 const frame: CubeTrackingResult = { raw: pose, filtered: pose, width: 640, height: 360, fps: 15, engine: 'ready', frameProcessed: true, frameStatus: 'receiving', detected: true, markers: [{ id: 101, corners: [] }], poseStatus: 'available' };
 const metadata: Omit<CubeRecording, 'samples' | 'keyframes' | 'durationMs'> = { schemaVersion: 1, recordingId: crypto.randomUUID(), createdAt: new Date().toISOString(), name: 'Test', coordinates: 'camera-relative: X right, Y up, Z depth; quaternion in Three.js camera basis', camera: { width: 1280, height: 720, verticalFov: 60, calibration: 'approximate', source: 'Windows webcam' }, markerId: 101, markerSizeMm: 40, cubeSizeMm: 57, sampleRate: 10 };
 describe('cube lab', () => {
+  it('records moving worker poses with relative monotonic time across loss and pause', () => {
+    let now=5000;const clock=vi.spyOn(performance,'now').mockImplementation(()=>now);
+    try{
+      const store=new CubeLabStore();store.toggleTracking();for(let i=0;i<3;i++)store.result(frame);
+      store.start();expect(store.get().mode).toBe('RECORDING');
+      const moved={...pose,position:{x:.2,y:.3,z:.9}};
+      now=5100;store.result({...frame,raw:moved,filtered:moved});
+      for(let i=0;i<5;i++){now+=100;store.result({...frame,detected:false,raw:null,filtered:null,markers:[],poseStatus:'none'});}
+      expect(store.get().tracking).toBe('LOST');expect(store.get().recording!.samples).toHaveLength(2);
+      now=5800;store.result({...frame,raw:moved,filtered:moved});expect(store.get().recording!.samples).toHaveLength(3);
+      store.pauseRecording();now=7800;store.result(frame);expect(store.get().recording!.samples).toHaveLength(3);
+      store.pauseRecording();now=7900;store.result(frame);store.stop();
+      const recorded=parseRecording(store.get().recording);
+      expect(recorded.samples.map(s=>s.timestampMs)).toEqual([0,100,800,900]);
+      expect(recorded.durationMs).toBe(900);expect(recorded.samples[1].position).not.toEqual(recorded.samples[0].position);
+      expect(store.get().mode).toBe('PLAYBACK');store.seek(50);expect(store.pose()!.position.x).toBeCloseTo(.15);
+      now=8000;store.result({...frame,raw:moved,filtered:moved});expect(store.get().recording!.samples).toHaveLength(4);
+    }finally{clock.mockRestore();}
+  });
   it('converts marker-face pose to cube center, preserving a proper rotation basis', () => {
     const p = cubePose([[1, 0, 0], [0, 1, 0], [0, 0, 1]], [.1, .2, .8], .057);
     expect(p.position).toEqual({ x: .1, y: .2, z: .8285 }); expect(p.rotation.w).toBe(1);
